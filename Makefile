@@ -9,6 +9,7 @@ WIDTH := 5.0
 WIDTH2 := 5.5
 DWIDTH := 11
 DWIDTH2 := 13
+TWIDTH := 3.5
 
 repl:
 	bpython -i <(echo 'import importlib.util; import sys; spec = importlib.util.spec_from_file_location("module.name", "${ROOT_DIR}/bpython.py"); repl = importlib.util.module_from_spec(spec); sys.modules["module.name"] = repl; spec.loader.exec_module(repl); repl.reload()')
@@ -44,5 +45,5 @@ microbenchmarks.pdf:
 packet-overhead.pdf:
 	python3 $(PYARGS) packet-overhead.py \
 		-o $(OUT_DIR)/packet-overhead.pdf \
-		--width $(WIDTH) --height 2 \
+		--width $(TWIDTH) --height 2 \
 		--1 ./flake.nix

@@ -160,69 +160,59 @@ def main():
     log_scale = (False, True) if args.logarithmic else False
     # ax.set_yscale('log' if args.logarithmic else 'linear')
 
-    if args.cached and isfile("/tmp/reconfiguration_stack.pkl"):
-        log("Using cached data")
-        data = pd.read_pickle("/tmp/reconfiguration_stack.pkl")
-    else:
-        log("Using hardcoded data")
-        # Hardcoded data to replace parse_data(df) and CSV reading
-        rows = []
-        # Data for each system and contributor (in nanoseconds)
-        # Unikraft (uk)
-        rows.append(['uk', 'Qemu start', 50000000])
-        rows.append(['uk', 'Firmware', 30000000])
-        rows.append(['uk', 'Unikraft', 15000000])
-        rows.append(['uk', 'Click init', 40000000])
-        rows.append(['uk', 'VNF configuration', 20000000])
-        rows.append(['uk', 'First packet', 5000000])
-        rows.append(['uk', 'Other', 10000000])
+    log("Using hardcoded data")
+    # Hardcoded data to replace parse_data(df) and CSV reading
+    rows = []
+    # Data for each system and contributor (in nanoseconds)
 
-        # Linux
-        rows.append(['linux', 'Qemu start', 55000000])
-        rows.append(['linux', 'Firmware', 35000000])
-        rows.append(['linux', 'Unikraft', 0])  # Not applicable
-        rows.append(['linux', 'Click init', 60000000])
-        rows.append(['linux', 'VNF configuration', 45000000])
-        rows.append(['linux', 'First packet', 8000000])
-        rows.append(['linux', 'Other', 25000000])
+    # VMs
+    rows.append(['VMs', 'VM exit', 50000000])
+    rows.append(['VMs', 'De/encryption', 0])  # Not applicable for VMs
+    rows.append(['VMs', 'Bounce buffer', 0])  # Not applicable for VMs
+    rows.append(['VMs', 'Memory copy', 40000000])
+    rows.append(['VMs', 'Other', 10000000])
 
-        # eBPF Unikraft (ukebpfjit)
-        rows.append(['ukebpfjit', 'Qemu start', 48000000])
-        rows.append(['ukebpfjit', 'Firmware', 28000000])
-        rows.append(['ukebpfjit', 'Unikraft', 12000000])
-        rows.append(['ukebpfjit', 'Click init', 0])  # Not applicable
-        rows.append(['ukebpfjit', 'VNF configuration', 8000000])
-        rows.append(['ukebpfjit', 'First packet', 3000000])
-        rows.append(['ukebpfjit', 'Other', 5000000])
+    # CVMs
+    rows.append(['CVMs', 'VM exit', 55000000])
+    rows.append(['CVMs', 'De/encryption', 35000000])
+    rows.append(['CVMs', 'Bounce buffer', 30000000])
+    rows.append(['CVMs', 'Memory copy', 45000000])
+    rows.append(['CVMs', 'Other', 15000000])
 
-        data = pd.DataFrame(rows, columns=['system', 'label', 'nsec'])
-        data.to_pickle("/tmp/reconfiguration_stack.pkl")
-    log("Preparing plotting data")    # map colors to hues
-    # colors = sns.color_palette("pastel", len(df['hue'].unique())-1) + [ mcolors.to_rgb('sandybrown') ]
-    # palette = dict(zip(df['hue'].unique(), colors))
-    columns = ['system', 'Contributor', 'restart_s']
-    systems = [ "click-unikraftvm", "click-linuxvm", "ebpf-linuxvm", "ebpf-unikraftvm" ]
-    Contributors = [ "Qemu start", "Firmware", "Unikraft", "Click init", "VNF configuration", "First packet", "Other" ]
+    # VMs \n(batched)
+    rows.append(['VMs \n(batched)', 'VM exit', 20000000])
+    rows.append(['VMs \n(batched)', 'De/encryption', 0])  # Not applicable for VMs
+    rows.append(['VMs \n(batched)', 'Bounce buffer', 0])  # Not applicable for VMs
+    rows.append(['VMs \n(batched)', 'Memory copy', 25000000])
+    rows.append(['VMs \n(batched)', 'Other', 5000000])
+
+    # CVMs \n(batched)
+    rows.append(['CVMs \n(batched)', 'VM exit', 25000000])
+    rows.append(['CVMs \n(batched)', 'De/encryption', 18000000])
+    rows.append(['CVMs \n(batched)', 'Bounce buffer', 15000000])
+    rows.append(['CVMs \n(batched)', 'Memory copy', 28000000])
+    rows.append(['CVMs \n(batched)', 'Other', 8000000])
+
+    data = pd.DataFrame(rows, columns=['system', 'label', 'nsec'])
+
+    log("Preparing plotting data")
+    Contributors = [ "VM exit", "De/encryption", "Bounce buffer", "Memory copy", "Other" ]
     data = data[data['label'].isin(Contributors)]
     data['Contributor'] = data['label']
     data['restart_s'] = data['nsec']
-    data = data.assign(system = data['system'].map({'linux': 'click-linuxvm', 'uk':'click-unikraftvm', 'ukebpfjit': 'ebpf-unikraftvm'}))
     data = data[['system', 'Contributor', 'restart_s']]
     df = data.groupby(['system', 'Contributor'])['restart_s'].mean().reset_index()
     df['restart_s'] = df['restart_s']/1000000
-    # sudo /bin/sh -c 'time ip l set eno1 xdpgeneric obj ./nix/builds/xdp/lib/reflector.o sec xdp'
-    xdp_df = pd.DataFrame([['ebpf-linuxvm', 'VNF configuration', 26]], columns=['system', 'Contributor', 'restart_s'])
-    df = pd.concat([df, xdp_df])
 
-    df['system'] = df['system'].apply(lambda row: system_map.get(str(row), row))
-    df['system'] = pd.Categorical(df['system'], ['Unikraft/Click', 'Linux/Click', 'XDP', 'MorphOS'])
+    # Set categorical order for systems
+    df['system'] = pd.Categorical(df['system'], ['VMs', 'CVMs', 'VMs \n(batched)', 'CVMs \n(batched)'])
     # Plot using Seaborn
     sns.histplot(
                data=df,
                x='system',
                weights='restart_s',
                hue="Contributor",
-               hue_order = ['Qemu start', 'Firmware', 'Unikraft', 'Click init', 'VNF configuration', 'First packet', 'Other'],
+               hue_order = ['VM exit', 'De/encryption', 'Bounce buffer', 'Memory copy', 'Other'],
                multiple="stack",
                # palette=palette,
                palette="deep",
