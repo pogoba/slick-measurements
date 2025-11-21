@@ -57,7 +57,7 @@ system_map = {
         'ebpf-linuxvm': 'XDP',
         }
 
-YLABEL = 'Reconfiguration [ms]     '
+YLABEL = 'Processing time [ms]'
 XLABEL = 'System'
 
 def map_hue(df_hue, hue_map):
@@ -275,18 +275,10 @@ def main():
     #             # log_scale=log_scale,
     #             ax=ax,
     #             )
-    if (args.slides):
-        sns.move_legend(
-            ax, "lower center",
-            # ncol=2,
-            bbox_to_anchor=(.5, 1), ncol=2, title=None, frameon=False,
-        )
-    else:
-        sns.move_legend(
-            ax, "upper right",
-            ncol=2,
-            # bbox_to_anchor=(.5, 1), ncol=3, title=None, frameon=False,
-        )
+    sns.move_legend(
+        ax, "lower center",
+        bbox_to_anchor=(.5, 1.02), ncol=2, title=None, frameon=False,
+    )
 
     color_hatch_map = dict()
     # Fix the legend hatches
@@ -351,7 +343,7 @@ def main():
     # fig.tight_layout(rect = (0, 0, 0, 0.1))
     # ax.set_position((0.1, 0.1, 0.5, 0.8))
     plt.tight_layout(pad=0.1)
-    # plt.subplots_adjust(right=0.78)
+    plt.subplots_adjust(top=0.7)
     plt.savefig(args.output.name)
     plt.close()
 
