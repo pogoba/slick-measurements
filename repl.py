@@ -54,11 +54,17 @@ def display(fig, block=False):
 
     def _show(path):
         from PyQt6.QtCore import QUrl
+        from PyQt6.QtGui import QKeySequence, QShortcut
         from PyQt6.QtWidgets import QApplication
+        from PyQt6.QtWebEngineCore import QWebEngineProfile
         from PyQt6.QtWebEngineWidgets import QWebEngineView
         app = QApplication(sys.argv)
+        QWebEngineProfile.defaultProfile().downloadRequested.connect(
+            lambda item: item.accept()
+        )
         view = QWebEngineView()
         view.setWindowTitle('Plot')
+        QShortcut(QKeySequence("Ctrl+W"), view, view.close)
         view.load(QUrl.fromLocalFile(path))
         view.resize(900, 600)
         view.show()
