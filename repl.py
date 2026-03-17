@@ -2,6 +2,7 @@ import os
 import importlib
 import sys
 import plotly.graph_objects as go
+import plotly.express as px
 import tempfile, multiprocessing
 from typing import List
 os.environ["QT_QPA_PLATFORM"] = "xcb"
@@ -107,17 +108,30 @@ def parse_data(systems=None, **kwargs):
 
 def throughput_vs_workload():
     df = parse_data({
-        "Slick": "./data/out1/userspace_noiomgr_b32_*ns_c1_64b_rep*.log",
-        "Wallet": "./data/out1/userspace_iomgr_b32_*ns_c1_64b_rep*.log",
+        "Naive": "./data/out1/userspace_noiomgr_b32_*ns_c1_64b_rep*.log",
+        "Slick": "./data/out1/userspace_iomgr_b32_*ns_c1_64b_rep*.log",
     })
     fig = go.Figure()
     for name in df["system"].unique():
-        sdf = df[df["system"] == name].groupby("workload")["Mpps"].mean().reset_index()
-        fig.add_trace(go.Scatter(x=sdf["workload"], y=sdf["Mpps"],
+        sdf = df[df["system"] == name].groupby("workload")["Mpps"].agg(["mean", "std"]).reset_index()
+        fig.add_trace(go.Scatter(x=sdf["workload"], y=sdf["mean"],
+                                 error_y=dict(type='data', array=sdf["std"]),
                                  mode='lines+markers', name=name))
     fig.update_layout(xaxis_title='Workload [ns]', yaxis_title='Throughput [Mpps]')
     display(fig)
 
+def barplot():
+    df = parse_data({
+        "Naive": "./data/out1/userspace_noiomgr_b32_*ns_c1_*.log",
+        "Slick": "./data/out1/userspace_iomgr_b32_*ns_c1_*.log",
+    })
+    x_axis = "pktsize"
+    hue = "system"
+    agg = df.groupby([x_axis, hue])["Mpps"].agg(["mean", "std"]).reset_index()
+    agg.columns = [x_axis, hue, "Mpps", "std"]
+    fig = px.bar(agg, x=x_axis, y="Mpps", error_y="std", color=hue, barmode="group")
+    fig.update_layout(xaxis_title='Packet size [B]', yaxis_title='Throughput [Mpps]')
+    display(fig)
 
 print("Repl.py loaded 🦘")
 print("Reload with `repl.reload()`")
