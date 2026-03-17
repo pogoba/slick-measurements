@@ -41,6 +41,41 @@ def cycles2ns(cycles, freq_mhz=1996):
     s = cycles / (1e6*freq_mhz)
     return s * 1e9
 
+def display(fig):
+    os.environ["QT_QPA_PLATFORM"] = "xcb"
+    import tempfile
+    from PyQt6.QtCore import QUrl
+    from PyQt6.QtWidgets import QApplication
+    from PyQt6.QtWebEngineWidgets import QWebEngineView
+
+    html_file = tempfile.NamedTemporaryFile(suffix=".html", delete=False)
+    html_file.write(fig.to_html().encode())
+    html_file.close()
+
+    app = QApplication.instance() or QApplication(sys.argv)
+    view = QWebEngineView()
+    view.setWindowTitle('Plot')
+    view.load(QUrl.fromLocalFile(html_file.name))
+    view.resize(900, 600)
+    view.show()
+    app.exec()
+
+    os.unlink(html_file.name)
+
+def plot():
+    import plotly.graph_objects as go
+
+    workload_ns = [10, 50, 100, 200, 500]
+    throughput_mpps = [14.88, 12.5, 9.8, 6.2, 2.8]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=workload_ns, y=throughput_mpps, mode='lines+markers'))
+    fig.update_layout(
+        xaxis_title='Workload [ns]',
+        yaxis_title='Throughput [Mpps]',
+    )
+    display(fig)
+
 print("Repl.py loaded 🦘")
 print("Reload with `repl.reload()`")
 

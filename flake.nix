@@ -15,7 +15,8 @@
 
     devShells.x86_64-linux.default = pkgs.mkShell {
       name = "hello";
-      buildInputs = with pkgs.python3.pkgs; [
+      nativeBuildInputs = [ pkgs.qt6.wrapQtAppsHook ];
+      buildInputs = (with pkgs.python3.pkgs; [
         black # auto formatting
         flake8 # annoying "good practice" annotations
         mypy # static typing
@@ -26,10 +27,17 @@
         seaborn
         tqdm
         scipy
+        plotly
+        pyqt6
+        pyqt6-webengine
 
         bpython
         ptpython
         ipykernel
+
+        marimo
+      ]) ++ [
+        pkgs.qt6.qtwayland
       ];
     };
   };
