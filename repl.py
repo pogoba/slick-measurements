@@ -3,6 +3,7 @@ import importlib
 import sys
 import plotly.graph_objects as go
 import tempfile, multiprocessing
+from typing import List
 os.environ["QT_QPA_PLATFORM"] = "xcb"
 
 def foobar():
@@ -68,7 +69,7 @@ def display(fig, block=False):
     if block:
         p.join()
 
-def plot():
+def plot_example():
 
     workload_ns = [10, 50, 100, 200, 500]
     throughput_mpps = [4.88, 12.5, 9.8, 6.2, 2.8]
@@ -81,6 +82,42 @@ def plot():
     )
     # fig.show()
     display(fig, block=False)
+
+def parse_data(systems=None, **kwargs):
+    import glob
+    import pandas as pd
+
+    if systems is None:
+        systems = kwargs
+    else:
+        systems = {**systems, **kwargs}
+
+    dfs = []
+    for name, pattern in systems.items():
+        paths = glob.glob(pattern)
+        if not paths:
+            print(f"Warning: no files matched for {name}: {pattern}")
+            continue
+        df = pd.concat([pd.read_csv(p) for p in paths])
+        df["system"] = name
+        dfs.append(df)
+
+    df = pd.concat(dfs)
+    return df
+
+def throughput_vs_workload():
+    df = parse_data({
+        "Slick": "./data/out1/userspace_noiomgr_b32_*ns_c1_64b_rep*.log",
+        "Wallet": "./data/out1/userspace_iomgr_b32_*ns_c1_64b_rep*.log",
+    })
+    fig = go.Figure()
+    for name in df["system"].unique():
+        sdf = df[df["system"] == name].groupby("workload")["Mpps"].mean().reset_index()
+        fig.add_trace(go.Scatter(x=sdf["workload"], y=sdf["Mpps"],
+                                 mode='lines+markers', name=name))
+    fig.update_layout(xaxis_title='Workload [ns]', yaxis_title='Throughput [Mpps]')
+    display(fig)
+
 
 print("Repl.py loaded 🦘")
 print("Reload with `repl.reload()`")
