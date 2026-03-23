@@ -15,7 +15,7 @@ def foobar():
 
 SIZE_SMALL = 64
 SIZE_BIG = 1522
-DATA = "./data/out6-output1/"
+DATA = "./data/out9-output2v2/"
 
 def ns2s(ns) -> float:
     return ns / 1e9
@@ -145,6 +145,7 @@ def parse_latency_csv(systems=None, **kwargs):
                 # These outliers are typically a latency of 6s for a single sample only, which is clearly wrong as can be seen from the stable throughput numbers.
                 # Mean doesnt work therefore, use median.
                 df["lat_us"] = lat_df["Latency"].quantile(0.5)
+                # df["lat_us"] = lat_df["Latency"].mean()
 
             else:
                 print(f"Warning: no matching csv for {p}")
@@ -230,6 +231,8 @@ def cpu_normalization(df):
 def throughput(pktsize=64, normalized=False):
     df = parse_data({
         "Optimal": f"{DATA}/userspace_mirror_b32_*ns_0b_c2_{pktsize}b_rep*.log",
+        "Insecure": f"{DATA}/userspace_insecure_b32_*ns_0b_c2_{pktsize}b_rep*.log",
+        "Secure": f"./data/out10-output3v2/multivm_mirror_b32_*ns_0b_c0_v2_{pktsize}b_rep*.log",
         "Naive": f"{DATA}/userspace_noiomgr_b32_*ns_0b_c2_{pktsize}b_rep*.log",
         "Slick": f"{DATA}/userspace_iomgr_b32_*ns_0b_c2_{pktsize}b_rep*.log",
     })
@@ -240,8 +243,11 @@ def throughput(pktsize=64, normalized=False):
     throughput_vs_workload(df, title=title)
 
 def throughput_memorywl(pktsize=64, normalized=False):
+    # DATA = "./data/out7/"
     df = parse_data({
         "Optimal": f"{DATA}/userspace_mirror_b32_0ns_*b_c2_{pktsize}b_rep*.log",
+        "Insecure": f"{DATA}/userspace_insecure_b32_0ns_*b_c2_{pktsize}b_rep*.log",
+        "Secure": f"./data/out10-output3v2/multivm_mirror_b32_0ns_*b_c0_v2_{pktsize}b_rep*.log",
         "Naive": f"{DATA}/userspace_noiomgr_b32_0ns_*b_c2_{pktsize}b_rep*.log",
         "Slick": f"{DATA}/userspace_iomgr_b32_0ns_*b_c2_{pktsize}b_rep*.log",
     })
@@ -255,8 +261,10 @@ def latency(pktsize=64):
     # df = parse_data({
     df = parse_latency_csv({
         "Optimal": f"{DATA}/vm_lat_mirror_b32_*ns_c2_{pktsize}b_rep*.log",
+        "Insecure": f"{DATA}/vm_lat_insecure_b32_*ns_c2_{pktsize}b_rep*.log",
+        "Secure": f"./data/out10-output3v2/multivm_mirror_b32_0ns_*b_c0_v2_{pktsize}b_rep*.log",
         "Naive": f"{DATA}/vm_lat_noiomgr_b32_*ns_c2_{pktsize}b_rep*.log",
-        "Slick": f"{DATA}/vm_lat_iomgr_b32_*ns_c2_{pktsize}b_rep1.log", # TODO: rep1 looks excessive, one point in rep0 as well
+        "Slick": f"{DATA}/vm_lat_iomgr_b32_*ns_c2_{pktsize}b_rep1.log",
     })
     title = f"b=32; c=2; pktsize={pktsize}"
     latency_vs_workload(df, title=title)
@@ -264,6 +272,8 @@ def latency(pktsize=64):
 def chaining(pktsize=64, normalized=False):
     df = parse_data({
         "Optimal": f"{DATA}/userspace_mirror_b32_0ns_0b_c*_{pktsize}b_rep*.log",
+        "Insecure": f"{DATA}/userspace_insecure_b32_0ns_0b_c*_{pktsize}b_rep*.log",
+        "Secure": f"./data/out10-output3v2/multivm_mirror_b32_0ns_0b_c0_v*_{pktsize}b_rep*.log",
         "Naive": f"{DATA}/userspace_noiomgr_b32_0ns_0b_c*_{pktsize}b_rep*.log",
         "Slick": f"{DATA}/userspace_iomgr_b32_0ns_0b_c*_{pktsize}b_rep*.log",
     })
@@ -283,6 +293,8 @@ def barplot(df, x_axis, x_axis_title, hue, title=None):
 def systems():
     df = parse_data({
         "Optimal": f"{DATA}/userspace_mirror_b32_0ns_0b_c2_*.log",
+        "Insecure": f"{DATA}/userspace_insecure_b32_0ns_0b_c2_*.log",
+        "Secure": f"./data/out10-output3v2/multivm_mirror_b32_0ns_0b_c0_v2_*.log",
         "Naive": f"{DATA}/userspace_noiomgr_b32_0ns_0b_c2_*.log",
         "Slick": f"{DATA}/userspace_iomgr_b32_0ns_0b_c2_*.log",
     })
@@ -294,6 +306,8 @@ def systems():
 def batchsizes():
     df = parse_data({
         "Optimal": f"{DATA}/userspace_mirror_b*_0ns_0b_c2_64b_*.log",
+        "Insecure": f"{DATA}/userspace_insecure_b*_0ns_0b_c2_64b_*.log",
+        "Secure": f"./data/out10-output3v2/multivm_mirror_b*_0ns_0b_c0_v2_64b_*.log",
         "Naive": f"{DATA}/userspace_noiomgr_b*_0ns_0b_c2_64b_*.log",
         "Slick": f"{DATA}/userspace_iomgr_b*_0ns_0b_c2_64b_*.log",
     })
