@@ -8,6 +8,7 @@ from re import search
 from os.path import basename, getsize
 import pandas as pd
 from plotting import map_grid_titles
+import os
 
 PLOTTING_NAME="microbenchmarks"
 DEFAULT_OUTPUT=f"{PLOTTING_NAME}.pdf"
@@ -239,17 +240,27 @@ def main():
     for color in COLORS:
         key = f"lat_{color}"
         if args.__dict__[key]:
-            arg_dfs = [ pd.read_csv(f.name) for f in args.__dict__[key] ]
-            arg_df = pd.concat(arg_dfs)
             name = args.__dict__[f'{key}_name']
-            arg_df["system"] = name[0]
-            arg_df["plot_type"] = "latency"
-            arg_df["y_value"] = arg_df["lat_us"]
-            if "pktsize" in arg_df.columns:
-                arg_df["metric_type"] = "time_" + arg_df["pktsize"].astype(int).astype(str) + "b"
-            else:
-                arg_df["metric_type"] = "time_64b"
-            all_dfs += [ arg_df ]
+            for f in args.__dict__[key]:
+                arg_df = pd.read_csv(f.name)
+                # Check for companion .csv with per-packet latency samples
+                csv_path = os.path.splitext(f.name)[0] + ".csv"
+                if os.path.exists(csv_path):
+                    lat_df = pd.read_csv(csv_path)
+                    # Use median to avoid pktgen outliers (see repl.py)
+                    arg_df["lat_us"] = lat_df["Latency"].quantile(0.5)
+                    arg_df["lat_us"] = arg_df["lat_us"] / 1000 # convert from ns to us
+                elif "lat_us" not in arg_df.columns:
+                    print(f"Warning: no latency data for {f.name}")
+                    arg_df["lat_us"] = np.nan
+                arg_df["system"] = name[0]
+                arg_df["plot_type"] = "latency"
+                arg_df["y_value"] = arg_df["lat_us"]
+                if "pktsize" in arg_df.columns:
+                    arg_df["metric_type"] = "time_" + arg_df["pktsize"].astype(int).astype(str) + "b"
+                else:
+                    arg_df["metric_type"] = "time_64b"
+                all_dfs += [ arg_df ]
 
     if all_dfs:
         df = pd.concat(all_dfs)
@@ -407,9 +418,9 @@ def main():
     xlabels = ['Packet processing [ns]', 'Packet processing [ns]',
                'Packet processing [ns]', 'Packet processing [ns]',
                'Memory accesses [kB]', 'Memory accesses [kB]']
-    ylabels = ['Throughput [Mpps]', 'Latency [ms]',
-               'Throughput [Mpps]', 'Latency [ms]',
-               'Throughput [Mpps]', 'Latency [ms]']
+    ylabels = ['Throughput [Mpps]', 'Latency [us]',
+               'Throughput [Mpps]', 'Latency [us]',
+               'Throughput [Mpps]', 'Latency [us]']
 
     for i, ax in enumerate(grid.axes.flat):
         ax.set_xlabel(xlabels[i])
