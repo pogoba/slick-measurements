@@ -8,6 +8,7 @@ from re import search
 from os.path import basename, getsize
 import pandas as pd
 from plotting import map_grid_titles
+import os
 
 PLOTTING_NAME="chain-scalability"
 DEFAULT_OUTPUT=f"{PLOTTING_NAME}.pdf"
@@ -162,6 +163,19 @@ def setup_parser():
                             nargs='+',
                             help=f'''Name of {color} plot''',
                             )
+    for color in COLORS:
+        parser.add_argument(f'--lat-{color}',
+                            type=argparse.FileType('r'),
+                            nargs='+',
+                            help=f'''Paths to latency CSVs for {color} plot''',
+                            )
+    for color in COLORS:
+        parser.add_argument(f'--lat-{color}-name',
+                            type=str,
+                            default=color,
+                            nargs='+',
+                            help=f'''Name of latency {color} plot''',
+                            )
     # for color in COLORS:
     #     parser.add_argument(f'--{color}-line',
     #                         type=str,
@@ -181,9 +195,10 @@ def setup_parser():
 def parse_args(parser):
     args = parser.parse_args()
 
-    if not any([args.__dict__[color] for color in COLORS]):
-        parser.error('At least one set of latency histogram paths must be ' +
-                     'provided')
+    lat_keys = [f"lat_{color}" for color in COLORS]
+    if not any([args.__dict__[color] for color in COLORS]) and \
+       not any([args.__dict__[k] for k in lat_keys]):
+        parser.error('At least one set of data paths must be provided')
 
     return args
 
@@ -200,43 +215,65 @@ def main():
 
     fig = plt.figure(figsize=(args.width, args.height))
 
-    # dfs = []
-    # for color in COLORS:
-    #     if args.__dict__[color]:
-    #         arg_dfs = [ pd.read_csv(f.name) for f in args.__dict__[color] ]
-    #         arg_df = pd.concat(arg_dfs)
-    #         name = args.__dict__[f'{color}_name']
-    #         dfs += [ arg_df ]
-    # df = pd.concat(dfs)
-    # for s in df['chain'].unique():
-    #     mpps = ((10* 1024**3 ) / ((s+20) * 8))
-    #     df.loc[len(df)] = [len(df), 3, 1, "rx", "vpp", s, 'filter', "Max IO bandwidth", 0, mpps ]
+    all_dfs = []
 
-    # df['pps'] = df['pps'].apply(lambda pps: pps / 1_000_000) # now mpps
-    # df['chain'] = df['chain'].astype(int)
-    # df['system'] = df['system'].apply(lambda row: system_map.get(str(row), row))
-    # df['gbit'] = mpps_to_gbitps(df['pps'], df['chain'])
-    # for s in [64, 128, 256, 512]:
-    #     nompk = df[(df['system'] == 'MorphOS') & (df['chain'] == s)]['pps'].mean()
-    #     mpk = df[(df['system'] == 'MorphOS + MPK') & (df['chain'] == s)]['pps'].mean()
-    #     overhead = (nompk-mpk)/nompk
-    #     ns = 1.0 / (nompk) * overhead * 1_000.0
-    #     print(f'At {s}B, Mpps for no MPK: {nompk:.3f}, with MPK: {mpk:.3f}, overhead : {overhead*100:.3f}% ({ns:.1f}ns per packet)')
-    columns = ['system', 'chain', 'mpps', 'plot_type']
-    systems = [ "Native", "LibOS (Gramine)", "Containers (Kata)", "VM (KVM-Linux)", "CVM (SEV-SNP)", "Wallet", "Slick" ]
+    # Read throughput data
+    for color in COLORS:
+        if args.__dict__[color]:
+            arg_dfs = [ pd.read_csv(f.name) for f in args.__dict__[color] ]
+            arg_df = pd.concat(arg_dfs)
+            name = args.__dict__[f'{color}_name']
+            arg_df["system"] = name[0]
+            arg_df["plot_type"] = "throughput"
+            arg_df["y_value"] = arg_df["Mpps"]
+            all_dfs += [ arg_df ]
+
+    # Read latency data
+    for color in COLORS:
+        key = f"lat_{color}"
+        if args.__dict__[key]:
+            name = args.__dict__[f'{key}_name']
+            for f in args.__dict__[key]:
+                arg_df = pd.read_csv(f.name)
+                # Check for companion .csv with per-packet latency samples
+                csv_path = os.path.splitext(f.name)[0] + ".csv"
+                if os.path.exists(csv_path):
+                    lat_df = pd.read_csv(csv_path)
+                    # Use median to avoid pktgen outliers (see repl.py)
+                    arg_df["lat_us"] = lat_df["Latency"].quantile(0.5)
+                    arg_df["lat_us"] = arg_df["lat_us"] / 1000  # convert from ns to us
+                elif "lat_us" not in arg_df.columns:
+                    print(f"Warning: no latency data for {f.name}")
+                    arg_df["lat_us"] = np.nan
+                arg_df["system"] = name[0]
+                arg_df["plot_type"] = "latency"
+                arg_df["y_value"] = arg_df["lat_us"]
+                all_dfs += [ arg_df ]
+
+    if all_dfs:
+        df = pd.concat(all_dfs)
+    else:
+        df = pd.DataFrame(columns=['system', 'chaining', 'y_value', 'plot_type'])
+
+    columns = ['system', 'chaining', 'y_value', 'plot_type']
+    systems = [ "Insecure", "Secure", "Naive", "Slick" ]
     chains = [ 1, 4, 16 ]
     rows = []
 
-    # Create data for both plots
+    existing_combos = set(zip(df["system"], df["plot_type"])) if not df.empty else set()
+
+    # Create synthetic fallback data
     for plot_type in ["throughput", "latency"]:
         for system in systems:
-            for chain in chains:
+            if (system, plot_type) in existing_combos:
+                continue
+            for ch in chains:
                 value = 0
-                if chain == 1:
+                if ch == 1:
                     value = 2
-                elif chain == 4:
+                elif ch == 4:
                     value = 1
-                elif chain == 16:
+                elif ch == 16:
                     value = 0.8
 
                 factor = 1
@@ -248,10 +285,10 @@ def main():
                 if plot_type == "latency":
                     value = 3.5 - value
 
-                rows += [[system, chain, value, plot_type]]
+                rows += [[system, ch, value, plot_type]]
 
-    # rows += [["MorphOS MPK", 600, 0, 5]]
-    df = pd.DataFrame(rows, columns=columns)
+    df = pd.concat([df, pd.DataFrame(rows, columns=columns)])
+    systems += [ s for s in df['system'].unique() if s not in systems ]
 
 
 
@@ -266,10 +303,12 @@ def main():
 
     # Map lineplot to each facet
     grid.map_dataframe(sns.lineplot,
-                      x="chain",
-                      y="mpps",
+                      x="chaining",
+                      y="y_value",
                       hue="system",
+                      hue_order=systems,
                       style="system",
+                      style_order=systems,
                       markers=True,
                       errorbar='ci')
 
@@ -295,7 +334,9 @@ def main():
 
     # Position the legend outside the plot area
     if grid._legend:
-        sns.move_legend(grid, "center left", bbox_to_anchor=(1.02, 0.5), ncol=1, title=None, frameon=False)
+        # sns.move_legend(grid, "center left", bbox_to_anchor=(1.02, 0.5), ncol=1, title=None, frameon=False)
+        n_labels = len(grid._legend.get_texts())
+        sns.move_legend(grid, "upper center", bbox_to_anchor=(0.5, 1.08), ncol=n_labels, title=None, frameon=False)
     # plot.add_legend(
     #         bbox_to_anchor=(0.55, 0.3),
     #         loc='upper left',
@@ -350,17 +391,17 @@ def main():
 
     # Set axis labels (different y-axis for each subplot)
     for i, ax in enumerate(grid.axes.flat):
-        ax.set_xlabel('                   Chain length')
+        ax.set_xlabel('                          Chain length')
         if i == 0:
             ax.set_ylabel('Throughput [Mpps]')
         else:
-            ax.set_ylabel('Latency [ms]')
+            ax.set_ylabel('Latency [us]')
 
     map_grid_titles(grid, grid_title_map)
 
     # Adjust layout and save
     grid.figure.tight_layout(pad=0.1)
-    grid.figure.subplots_adjust(left=0.1)
+    grid.figure.subplots_adjust(top=0.8)
     grid.savefig(args.output.name)
     plt.close()
 
