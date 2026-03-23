@@ -50,7 +50,29 @@ def cycles2ns(cycles, freq_mhz=1996):
     s = cycles / (1e6*freq_mhz)
     return s * 1e9
 
+
+
+
+
+
+
+# ========= Plotting infra ===========
+
+
+
+save_dont_display = None | str # none or path
+
+def save(plotting_fn, filename):
+    global save_dont_display
+    save_dont_display = filename
+    plotting_fn()
+    save_dont_display = None
+
 def display(fig, block=False):
+
+    if save_dont_display is not None:
+        fig.write_image(save_dont_display, scale=3)
+        return
 
     html_file = tempfile.NamedTemporaryFile(suffix=".html", delete=False)
     html_file.write(fig.to_html().encode())
@@ -203,6 +225,13 @@ def latency_vs_workload(df, title):
     fig.update_layout(title=title, xaxis_title='Workload [ns]', yaxis_title='Latency [us]', yaxis_rangemode='tozero')
     display(fig)
 
+def barplot(df, x_axis, x_axis_title, hue, title=None):
+    agg = df.groupby([x_axis, hue])["Mpps"].agg(["mean", "std"]).reset_index()
+    agg.columns = [x_axis, hue, "Mpps", "std"]
+    fig = px.bar(agg, x=x_axis, y="Mpps", error_y="std", color=hue, barmode="group")
+    fig.update_layout(title=title, xaxis_title=x_axis_title, yaxis_title='Throughput [Mpps]')
+    display(fig)
+
 
 
 # ========= Data Transformers ===========
@@ -283,13 +312,6 @@ def chaining(pktsize=64, normalized=False):
         title += " (CPU-normalized)"
     throughput_vs_chaining(df, title=title)
 
-def barplot(df, x_axis, x_axis_title, hue, title=None):
-    agg = df.groupby([x_axis, hue])["Mpps"].agg(["mean", "std"]).reset_index()
-    agg.columns = [x_axis, hue, "Mpps", "std"]
-    fig = px.bar(agg, x=x_axis, y="Mpps", error_y="std", color=hue, barmode="group")
-    fig.update_layout(title=title, xaxis_title=x_axis_title, yaxis_title='Throughput [Mpps]')
-    display(fig)
-
 def systems():
     df = parse_data({
         "Optimal": f"{DATA}/userspace_mirror_b32_0ns_0b_c2_*.log",
@@ -316,6 +338,14 @@ def batchsizes():
     hue = "system"
     barplot(df, x_axis, x_title, hue, title="c=2; size=64b; workload=0ns;")
 
+def save_report(prefix = "report"):
+    save(lambda: throughput(pktsize=64), f"{prefix}_throughput_64b.png")
+    save(lambda: throughput(pktsize=1500), f"{prefix}_throughput_1500b.png")
+    save(lambda: throughput_memorywl(pktsize=64), f"{prefix}_throughput_memorywl_64b.png")
+    save(lambda: latency(pktsize=64), f"{prefix}_latency_64b.png")
+    save(lambda: latency(pktsize=1500), f"{prefix}_latency_1500b.png")
+    save(lambda: chaining(pktsize=64), f"{prefix}_chaining_64b.png")
+    save(lambda: chaining(pktsize=1500), f"{prefix}_chaining_1500b.png")
 
 print("Repl.py loaded 🦘")
 print("Reload with `repl.reload()`")
