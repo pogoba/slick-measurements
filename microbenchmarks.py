@@ -166,6 +166,19 @@ def setup_parser():
                             nargs='+',
                             help=f'''Name of {color} plot''',
                             )
+    for color in COLORS:
+        parser.add_argument(f'--lat-{color}',
+                            type=argparse.FileType('r'),
+                            nargs='+',
+                            help=f'''Paths to latency CSVs for {color} plot''',
+                            )
+    for color in COLORS:
+        parser.add_argument(f'--lat-{color}-name',
+                            type=str,
+                            default=color,
+                            nargs='+',
+                            help=f'''Name of latency {color} plot''',
+                            )
     # for color in COLORS:
     #     parser.add_argument(f'--{color}-line',
     #                         type=str,
@@ -185,9 +198,10 @@ def setup_parser():
 def parse_args(parser):
     args = parser.parse_args()
 
-    if not any([args.__dict__[color] for color in COLORS]):
-        parser.error('At least one set of latency histogram paths must be ' +
-                     'provided')
+    lat_keys = [f"lat_{color}" for color in COLORS]
+    if not any([args.__dict__[color] for color in COLORS]) and \
+       not any([args.__dict__[k] for k in lat_keys]):
+        parser.error('At least one set of data paths must be provided')
 
     return args
 
@@ -204,22 +218,43 @@ def main():
 
     fig = plt.figure(figsize=(args.width, args.height))
 
-    dfs = []
+    all_dfs = []
+
+    # Read throughput data
     for color in COLORS:
         if args.__dict__[color]:
             arg_dfs = [ pd.read_csv(f.name) for f in args.__dict__[color] ]
             arg_df = pd.concat(arg_dfs)
             name = args.__dict__[f'{color}_name']
             arg_df["system"] = name[0]
-            dfs += [ arg_df ]
-    df = pd.concat(dfs)
-    df["plot_type"] = "throughput"
-    df["y_value"] = df["Mpps"]
-    del df["Mpps"]
-    if "pktsize" in df.columns:
-        df["metric_type"] = "time_" + df["pktsize"].astype(int).astype(str) + "b"
+            arg_df["plot_type"] = "throughput"
+            arg_df["y_value"] = arg_df["Mpps"]
+            if "pktsize" in arg_df.columns:
+                arg_df["metric_type"] = "time_" + arg_df["pktsize"].astype(int).astype(str) + "b"
+            else:
+                arg_df["metric_type"] = "time_64b"
+            all_dfs += [ arg_df ]
+
+    # Read latency data
+    for color in COLORS:
+        key = f"lat_{color}"
+        if args.__dict__[key]:
+            arg_dfs = [ pd.read_csv(f.name) for f in args.__dict__[key] ]
+            arg_df = pd.concat(arg_dfs)
+            name = args.__dict__[f'{key}_name']
+            arg_df["system"] = name[0]
+            arg_df["plot_type"] = "latency"
+            arg_df["y_value"] = arg_df["lat_us"]
+            if "pktsize" in arg_df.columns:
+                arg_df["metric_type"] = "time_" + arg_df["pktsize"].astype(int).astype(str) + "b"
+            else:
+                arg_df["metric_type"] = "time_64b"
+            all_dfs += [ arg_df ]
+
+    if all_dfs:
+        df = pd.concat(all_dfs)
     else:
-        df["metric_type"] = "time_64b"
+        df = pd.DataFrame(columns=['system', 'workload', 'y_value', 'plot_type', 'metric_type'])
     # for s in df['chain'].unique():
     #     mpps = ((10* 1024**3 ) / ((s+20) * 8))
     #     df.loc[len(df)] = [len(df), 3, 1, "rx", "vpp", s, 'filter', "Max IO bandwidth", 0, mpps ]
