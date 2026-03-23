@@ -230,11 +230,26 @@ def main():
             arg_df["system"] = name[0]
             arg_df["plot_type"] = "throughput"
             arg_df["y_value"] = arg_df["Mpps"]
-            if "pktsize" in arg_df.columns:
-                arg_df["metric_type"] = "time_" + arg_df["pktsize"].astype(int).astype(str) + "b"
+            # Split into time vs memory facets
+            if "memory_workload" in arg_df.columns:
+                time_df = arg_df[arg_df["memory_workload"] == 0].copy()
+                mem_df = arg_df[arg_df["memory_workload"] > 0].copy()
+                if not time_df.empty:
+                    if "pktsize" in time_df.columns:
+                        time_df["metric_type"] = "time_" + time_df["pktsize"].astype(int).astype(str) + "b"
+                    else:
+                        time_df["metric_type"] = "time_64b"
+                    all_dfs += [ time_df ]
+                if not mem_df.empty:
+                    mem_df["metric_type"] = "memory"
+                    mem_df["workload"] = mem_df["memory_workload"] / 1024  # bytes to kB
+                    all_dfs += [ mem_df ]
             else:
-                arg_df["metric_type"] = "time_64b"
-            all_dfs += [ arg_df ]
+                if "pktsize" in arg_df.columns:
+                    arg_df["metric_type"] = "time_" + arg_df["pktsize"].astype(int).astype(str) + "b"
+                else:
+                    arg_df["metric_type"] = "time_64b"
+                all_dfs += [ arg_df ]
 
     # Read latency data
     for color in COLORS:
@@ -256,11 +271,26 @@ def main():
                 arg_df["system"] = name[0]
                 arg_df["plot_type"] = "latency"
                 arg_df["y_value"] = arg_df["lat_us"]
-                if "pktsize" in arg_df.columns:
-                    arg_df["metric_type"] = "time_" + arg_df["pktsize"].astype(int).astype(str) + "b"
+                # Split into time vs memory facets
+                if "memory_workload" in arg_df.columns:
+                    time_df = arg_df[arg_df["memory_workload"] == 0].copy()
+                    mem_df = arg_df[arg_df["memory_workload"] > 0].copy()
+                    if not time_df.empty:
+                        if "pktsize" in time_df.columns:
+                            time_df["metric_type"] = "time_" + time_df["pktsize"].astype(int).astype(str) + "b"
+                        else:
+                            time_df["metric_type"] = "time_64b"
+                        all_dfs += [ time_df ]
+                    if not mem_df.empty:
+                        mem_df["metric_type"] = "memory"
+                        mem_df["workload"] = mem_df["memory_workload"] / 1024  # bytes to kB
+                        all_dfs += [ mem_df ]
                 else:
-                    arg_df["metric_type"] = "time_64b"
-                all_dfs += [ arg_df ]
+                    if "pktsize" in arg_df.columns:
+                        arg_df["metric_type"] = "time_" + arg_df["pktsize"].astype(int).astype(str) + "b"
+                    else:
+                        arg_df["metric_type"] = "time_64b"
+                    all_dfs += [ arg_df ]
 
     if all_dfs:
         df = pd.concat(all_dfs)
