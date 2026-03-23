@@ -40,7 +40,7 @@ chain-scalability.pdf:
 microbenchmarks.pdf:
 	python3 $(PYARGS) microbenchmarks.py \
 		-o $(OUT_DIR)/microbenchmarks.pdf \
-		--width $(WIDTH) --height 4 \
+		--width $(WIDTH) --height 4.3 \
     --1-name "Insecure" --1 $(DATA)/userspace_insecure_b32_*ns_*b_c2_*b_rep*.log \
     --2-name "Secure" --2 ./data/out10-output3v2/multivm_mirror_b32_*ns_*b_c0_v2_*b_rep*.log \
     --3-name "Naive" --3 $(DATA)/userspace_noiomgr_b32_*ns_*b_c2_*b_rep*.log \

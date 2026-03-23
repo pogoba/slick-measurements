@@ -435,21 +435,31 @@ def main():
     #                         ncol=3, title=None, frameon=False,
     #                         )
 
-    # # Add annotations to first pair
-    # grid.axes.flat[0].annotate(
-    #     "↑ Higher is better",
-    #     xycoords="axes points",
-    #     xy=(10, 0),
-    #     xytext=(-25, -27),
-    #     color="navy",
-    #     weight="bold",
-    # )
+    # Add annotations to first pair
+    grid.axes.flat[0].annotate(
+        "↑ Higher is better", # or ↓ ← ↑ →
+        xycoords="axes points",
+        xy=(10, 0),
+        xytext=(-40, -40),
+        color="navy",
+        weight="bold",
+    )
+    grid.axes.flat[int(len(grid.axes.flat) / 2)].annotate(
+        "↓ Lower is better", # or ↓ ← ↑ →
+        xycoords="axes points",
+        xy=(10, 0),
+        xytext=(-40, -40),
+        color="navy",
+        weight="bold",
+    )
 
     # Set axis labels for each subplot
-    xlabels = ['Packet processing [ns]', 'Packet processing [ns]', 'Memory accesses [kB]',
-               'Packet processing [ns]', 'Packet processing [ns]', 'Memory accesses [kB]']
-    ylabels = ['Throughput [Mpps]', 'Throughput [Mpps]', 'Throughput [Mpps]',
-               'Latency [us]', 'Latency [us]', 'Latency [us]']
+    xlabels = [
+        'Packet processing [ns]   ', 'Packet processing [ns]  ', 'Memory accesses [kB]',
+        'Packet processing [ns]   ', 'Packet processing [ns]  ', 'Memory accesses [kB]'
+    ]
+    ylabels = ['Throughput [Mpps]', '', '',
+               'Latency [us]', '', '']
 
     for i, ax in enumerate(grid.axes.flat):
         ax.set_xlabel(xlabels[i])
@@ -459,7 +469,7 @@ def main():
 
     # Adjust layout and save
     grid.figure.tight_layout(pad=0.1)
-    # grid.figure.subplots_adjust(top=1)
+    grid.figure.subplots_adjust(hspace=1.0)
     grid.savefig(args.output.name)
     plt.close()
 
