@@ -57,12 +57,12 @@ system_map = {
         }
 
 grid_title_map = {
-    'plot_order = throughput_time': '(a) Throughput\n',
-    'plot_order = latency_time': '(b) Latency\n',
-    'plot_order = throughput_memory_fast': '(c) Throughput\n(no processing)',
-    'plot_order = latency_memory_fast': '(d) Latency\n(no processing)',
-    'plot_order = throughput_memory_slow': '(e) Throughput\n(200ns processing)',
-    'plot_order = latency_memory_slow': '(f) Latency\n(200ns processing)',
+    'plot_order = throughput_time_64b': '(a) Throughput\n(64B packets)',
+    'plot_order = latency_time_64b': '(b) Latency\n(64B packets)',
+    'plot_order = throughput_time_1500b': '(c) Throughput\n(1500B packets)',
+    'plot_order = latency_time_1500b': '(d) Latency\n(1500B packets)',
+    'plot_order = throughput_memory': '(e) Throughput\n(1500B packets)',
+    'plot_order = latency_memory': '(f) Latency\n(1500B packets)',
 }
 
 # Set global font size
@@ -213,10 +213,13 @@ def main():
             arg_df["system"] = name[0]
             dfs += [ arg_df ]
     df = pd.concat(dfs)
-    df["metric_type"] = "time"
     df["plot_type"] = "throughput"
     df["y_value"] = df["Mpps"]
     del df["Mpps"]
+    if "pktsize" in df.columns:
+        df["metric_type"] = "time_" + df["pktsize"].astype(int).astype(str) + "b"
+    else:
+        df["metric_type"] = "time_64b"
     # for s in df['chain'].unique():
     #     mpps = ((10* 1024**3 ) / ((s+20) * 8))
     #     df.loc[len(df)] = [len(df), 3, 1, "rx", "vpp", s, 'filter', "Max IO bandwidth", 0, mpps ]
@@ -235,26 +238,26 @@ def main():
     systems = [ "Native", "Containers (Kata)", "VM (KVM-Linux)", "CVM (SEV-SNP)", "Wallet", "Naive", "Slick" ] # "LibOS (Gramine)",
     rows = []
 
+    existing_combos = set(zip(df["system"], df["plot_type"], df["metric_type"]))
+
     # Create data for all 6 plots (3 metric types x 2 plot types)
-    for metric_type in ["time", "memory_fast", "memory_slow"]:
+    for metric_type in ["time_64b", "time_1500b", "memory"]:
         for plot_type in ["throughput", "latency"]:
             for system in systems:
                 # Define x values based on metric type
-                if metric_type == "time":
+                if metric_type.startswith("time"):
                     x_values = [10, 50, 100]  # packet processing in ns
-                elif metric_type == "memory_fast":
-                    x_values = [0, 10, 50]  # memory accesses in kB
-                else:  # memory_slow
-                    x_values = [0, 100, 500]  # memory accesses in kB
+                else:  # memory
+                    x_values = [0, 10, 50, 100, 500]  # memory accesses in kB
 
                 for x_val in x_values:
                     # Calculate base value
-                    if metric_type == "time":
+                    if metric_type.startswith("time"):
                         value = 2.5 - (x_val / 50)  # decreases with processing time
-                    elif metric_type == "memory_fast":
-                        value = 2.2 - (x_val / 50) * 0.8  # decreases with fast memory access
-                    else:  # memory_slow
-                        value = 2 - (x_val / 500) * 1.5  # decreases with slow memory access
+                        if metric_type == "time_1500b":
+                            value *= 0.6  # lower throughput for larger packets
+                    else:  # memory
+                        value = 2.2 - (x_val / 500) * 1.5  # decreases with memory access
 
                     factor = 1
                     if system == "Slick":
@@ -265,18 +268,17 @@ def main():
                     if plot_type == "latency":
                         value = 3.5 - value
 
-                    if system not in df["system"].values:
+                    if (system, plot_type, metric_type) not in existing_combos:
                         rows += [[system, x_val, value, plot_type, metric_type]]
 
     df = pd.concat([df, pd.DataFrame(rows, columns=columns)])
     systems += [ s for s in df['system'].unique() if s not in systems ] # add misc systems cause pyplot will later filter for these
-    breakpoint()
 
     # Create a combined column for ordering: time_thr, time_lat, mem_fast_thr, mem_fast_lat, mem_slow_thr, mem_slow_lat
     df['plot_order'] = df['plot_type'] + '_' + df['metric_type']
-    plot_order = ['throughput_time', 'latency_time',
-                  'throughput_memory_fast', 'latency_memory_fast',
-                  'throughput_memory_slow', 'latency_memory_slow']
+    plot_order = ['throughput_time_64b', 'latency_time_64b',
+                  'throughput_time_1500b', 'latency_time_1500b',
+                  'throughput_memory', 'latency_memory']
 
     # Create FacetGrid with single row and 6 columns
     grid = sns.FacetGrid(df, col='plot_order', col_order=plot_order,
@@ -368,7 +370,7 @@ def main():
 
     # Set axis labels for each subplot
     xlabels = ['Packet processing [ns]', 'Packet processing [ns]',
-               'Memory accesses [kB]', 'Memory accesses [kB]',
+               'Packet processing [ns]', 'Packet processing [ns]',
                'Memory accesses [kB]', 'Memory accesses [kB]']
     ylabels = ['Throughput [Mpps]', 'Latency [ms]',
                'Throughput [Mpps]', 'Latency [ms]',
