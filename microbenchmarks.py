@@ -204,14 +204,19 @@ def main():
 
     fig = plt.figure(figsize=(args.width, args.height))
 
-    # dfs = []
-    # for color in COLORS:
-    #     if args.__dict__[color]:
-    #         arg_dfs = [ pd.read_csv(f.name) for f in args.__dict__[color] ]
-    #         arg_df = pd.concat(arg_dfs)
-    #         name = args.__dict__[f'{color}_name']
-    #         dfs += [ arg_df ]
-    # df = pd.concat(dfs)
+    dfs = []
+    for color in COLORS:
+        if args.__dict__[color]:
+            arg_dfs = [ pd.read_csv(f.name) for f in args.__dict__[color] ]
+            arg_df = pd.concat(arg_dfs)
+            name = args.__dict__[f'{color}_name']
+            arg_df["system"] = name[0]
+            dfs += [ arg_df ]
+    df = pd.concat(dfs)
+    df["metric_type"] = "time"
+    df["plot_type"] = "throughput"
+    df["y_value"] = df["Mpps"]
+    del df["Mpps"]
     # for s in df['chain'].unique():
     #     mpps = ((10* 1024**3 ) / ((s+20) * 8))
     #     df.loc[len(df)] = [len(df), 3, 1, "rx", "vpp", s, 'filter', "Max IO bandwidth", 0, mpps ]
@@ -226,8 +231,8 @@ def main():
     #     overhead = (nompk-mpk)/nompk
     #     ns = 1.0 / (nompk) * overhead * 1_000.0
     #     print(f'At {s}B, Mpps for no MPK: {nompk:.3f}, with MPK: {mpk:.3f}, overhead : {overhead*100:.3f}% ({ns:.1f}ns per packet)')
-    columns = ['system', 'x_value', 'y_value', 'plot_type', 'metric_type']
-    systems = [ "Native", "LibOS (Gramine)", "Containers (Kata)", "VM (KVM-Linux)", "CVM (SEV-SNP)", "Wallet", "Slick" ]
+    columns = ['system', 'workload', 'y_value', 'plot_type', 'metric_type']
+    systems = [ "Native", "Containers (Kata)", "VM (KVM-Linux)", "CVM (SEV-SNP)", "Wallet", "Naive", "Slick" ] # "LibOS (Gramine)",
     rows = []
 
     # Create data for all 6 plots (3 metric types x 2 plot types)
@@ -260,9 +265,12 @@ def main():
                     if plot_type == "latency":
                         value = 3.5 - value
 
-                    rows += [[system, x_val, value, plot_type, metric_type]]
+                    if system not in df["system"].values:
+                        rows += [[system, x_val, value, plot_type, metric_type]]
 
-    df = pd.DataFrame(rows, columns=columns)
+    df = pd.concat([df, pd.DataFrame(rows, columns=columns)])
+    systems += [ s for s in df['system'].unique() if s not in systems ] # add misc systems cause pyplot will later filter for these
+    breakpoint()
 
     # Create a combined column for ordering: time_thr, time_lat, mem_fast_thr, mem_fast_lat, mem_slow_thr, mem_slow_lat
     df['plot_order'] = df['plot_type'] + '_' + df['metric_type']
@@ -282,10 +290,12 @@ def main():
 
     # Map lineplot to each facet
     grid.map_dataframe(sns.lineplot,
-                      x="x_value",
+                      x="workload",
                       y="y_value",
                       hue="system",
+                      hue_order=systems,
                       style="system",
+                      style_order=systems,
                       markers=True,
                       errorbar='ci')
 
