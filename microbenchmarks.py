@@ -59,11 +59,11 @@ system_map = {
 
 grid_title_map = {
     'plot_order = throughput_time_64b': '(a) Throughput\n(64B packets)',
-    'plot_order = latency_time_64b': '(b) Latency\n(64B packets)',
-    'plot_order = throughput_time_1500b': '(c) Throughput\n(1500B packets)',
-    'plot_order = latency_time_1500b': '(d) Latency\n(1500B packets)',
-    'plot_order = throughput_memory': '(e) Throughput\n(1500B packets)',
-    'plot_order = latency_memory': '(f) Latency\n(1500B packets)',
+    'plot_order = throughput_time_1500b': '(b) Throughput\n(1500B packets)',
+    'plot_order = throughput_memory': '(c) Throughput\n(memory workload)',
+    'plot_order = latency_time_64b': '(d) Latency\n(64B packets)',
+    'plot_order = latency_time_1500b': '(e) Latency\n(1500B packets)',
+    'plot_order = latency_memory': '(f) Latency\n(memory workload)',
 }
 
 # Set global font size
@@ -352,13 +352,13 @@ def main():
 
     # Create a combined column for ordering: time_thr, time_lat, mem_fast_thr, mem_fast_lat, mem_slow_thr, mem_slow_lat
     df['plot_order'] = df['plot_type'] + '_' + df['metric_type']
-    plot_order = ['throughput_time_64b', 'latency_time_64b',
-                  'throughput_time_1500b', 'latency_time_1500b',
-                  'throughput_memory', 'latency_memory']
+    plot_order = ['throughput_time_64b', 'throughput_time_1500b', 'throughput_memory',
+                  'latency_time_64b', 'latency_time_1500b', 'latency_memory']
 
-    # Create FacetGrid with single row and 6 columns
+    # Create FacetGrid with 3 columns, 2 rows
     grid = sns.FacetGrid(df, col='plot_order', col_order=plot_order,
-                         height=args.height, aspect=args.width/6/args.height,
+                         col_wrap=3,
+                         height=args.height, aspect=args.width/3/args.height,
                          sharey=False, sharex=False)
 
     # Set axis below for all subplots
@@ -397,9 +397,10 @@ def main():
     # Add legend to the grid
     grid.add_legend(title=None, frameon=False)
 
-    # Position the legend outside the plot area
+    # Position the legend above the plot in a single row
     if grid._legend:
-        sns.move_legend(grid, "center left", bbox_to_anchor=(1.02, 0.5), ncol=1, title=None, frameon=False)
+        n_labels = len(grid._legend.get_texts())
+        sns.move_legend(grid, "upper center", bbox_to_anchor=(0.5, 1.08), ncol=n_labels, title=None, frameon=False)
     # plot.add_legend(
     #         bbox_to_anchor=(0.55, 0.3),
     #         loc='upper left',
@@ -445,12 +446,10 @@ def main():
     # )
 
     # Set axis labels for each subplot
-    xlabels = ['Packet processing [ns]', 'Packet processing [ns]',
-               'Packet processing [ns]', 'Packet processing [ns]',
-               'Memory accesses [kB]', 'Memory accesses [kB]']
-    ylabels = ['Throughput [Mpps]', 'Latency [us]',
-               'Throughput [Mpps]', 'Latency [us]',
-               'Throughput [Mpps]', 'Latency [us]']
+    xlabels = ['Packet processing [ns]', 'Packet processing [ns]', 'Memory accesses [kB]',
+               'Packet processing [ns]', 'Packet processing [ns]', 'Memory accesses [kB]']
+    ylabels = ['Throughput [Mpps]', 'Throughput [Mpps]', 'Throughput [Mpps]',
+               'Latency [us]', 'Latency [us]', 'Latency [us]']
 
     for i, ax in enumerate(grid.axes.flat):
         ax.set_xlabel(xlabels[i])
@@ -460,7 +459,7 @@ def main():
 
     # Adjust layout and save
     grid.figure.tight_layout(pad=0.1)
-    grid.figure.subplots_adjust(left=0.1)
+    # grid.figure.subplots_adjust(top=1)
     grid.savefig(args.output.name)
     plt.close()
 

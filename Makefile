@@ -40,11 +40,11 @@ chain-scalability.pdf:
 microbenchmarks.pdf:
 	python3 $(PYARGS) microbenchmarks.py \
 		-o $(OUT_DIR)/microbenchmarks.pdf \
-		--width $(DWIDTH) --height 2 \
     --1-name "Insecure" --1 $(DATA)/userspace_insecure_b32_*ns_0b_c2_*b_rep*.log \
     --2-name "Secure" --2 ./data/out10-output3v2/multivm_mirror_b32_*ns_0b_c0_v2_*b_rep*.log \
     --3-name "Naive" --3 $(DATA)/userspace_noiomgr_b32_*ns_0b_c2_*b_rep*.log \
     --4-name "Slick" --4 $(DATA)/userspace_iomgr_b32_*ns_0b_c2_*b_rep*.log \
+		--width $(WIDTH) --height 4 \
     \
     --lat-1-name "Insecure" --lat-1 $(DATA)/vm_lat_insecure_b32_*ns_c2_*b_rep*.log \
     --lat-3-name "Naive" --lat-3 $(DATA)/vm_lat_noiomgr_b32_*ns_c2_*b_rep*.log \
