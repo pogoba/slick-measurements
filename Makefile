@@ -1,9 +1,10 @@
 .PHONY: repl
 
 OUT_DIR := ./
+DATA := ./data/out9-output2v2/
 ROOT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 PYARGS :=
-PAPER_FIGURES := app-throughput.pdf chain-scalability.pdf microbenchmarks.pdf
+PAPER_FIGURES := app-throughput.pdf chain-scalability.pdf microbenchmarks.pdf packet-overhead.pdf
 
 WIDTH := 5.0
 WIDTH2 := 5.5
@@ -40,7 +41,15 @@ microbenchmarks.pdf:
 	python3 $(PYARGS) microbenchmarks.py \
 		-o $(OUT_DIR)/microbenchmarks.pdf \
 		--width $(DWIDTH) --height 2 \
-		--1 ./flake.nix
+    --1-name "Insecure" --1 $(DATA)/userspace_insecure_b32_*ns_0b_c2_*b_rep*.log \
+    --2-name "Secure" --2 ./data/out10-output3v2/multivm_mirror_b32_*ns_0b_c0_v2_*b_rep*.log \
+    --3-name "Naive" --3 $(DATA)/userspace_noiomgr_b32_*ns_0b_c2_*b_rep*.log \
+    --4-name "Slick" --4 $(DATA)/userspace_iomgr_b32_*ns_0b_c2_*b_rep*.log
+
+#    --1-name "Optimal" --1 $(DATA)/userspace_mirror_b32_*ns_0b_c2_*b_rep*.log \
+
+#  	--1-name "Slick" --1 ./data/out1/userspace_iomgr_b32_*ns_c1_64b_rep*.log \
+#  	--2-name "Naive" --2 ./data/out1/userspace_noiomgr_b32_*ns_c1_64b_rep*.log
 
 packet-overhead.pdf:
 	python3 $(PYARGS) packet-overhead.py \

@@ -235,7 +235,7 @@ def main():
     #     ns = 1.0 / (nompk) * overhead * 1_000.0
     #     print(f'At {s}B, Mpps for no MPK: {nompk:.3f}, with MPK: {mpk:.3f}, overhead : {overhead*100:.3f}% ({ns:.1f}ns per packet)')
     columns = ['system', 'workload', 'y_value', 'plot_type', 'metric_type']
-    systems = [ "Native", "Containers (Kata)", "VM (KVM-Linux)", "CVM (SEV-SNP)", "Wallet", "Naive", "Slick" ] # "LibOS (Gramine)",
+    systems = [  "Insecure", "Secure", "Naive", "Slick" ] # "LibOS (Gramine)", "Wallet", "CVM (SEV-SNP)", "Native", "Containers (Kata)", "VM (KVM-Linux)",
     rows = []
 
     existing_combos = set(zip(df["system"], df["plot_type"], df["metric_type"]))
