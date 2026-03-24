@@ -313,38 +313,56 @@ def main():
     #     ns = 1.0 / (nompk) * overhead * 1_000.0
     #     print(f'At {s}B, Mpps for no MPK: {nompk:.3f}, with MPK: {mpk:.3f}, overhead : {overhead*100:.3f}% ({ns:.1f}ns per packet)')
     columns = ['system', 'workload', 'y_value', 'plot_type', 'metric_type']
-    systems = [  "Insecure", "Secure", "Naive", "Slick" ] # "LibOS (Gramine)", "Wallet", "CVM (SEV-SNP)", "Native", "Containers (Kata)", "VM (KVM-Linux)",
+    systems = [  "Insecure", "Secure", "Wallet", "Naive", "Slick" ] # "LibOS (Gramine)", "Wallet", "CVM (SEV-SNP)", "Native", "Containers (Kata)", "VM (KVM-Linux)",
     rows = []
 
     existing_combos = set(zip(df["system"], df["plot_type"], df["metric_type"]))
 
+    # Extract real x-values per (plot_type, metric_type) from data
+    real_x_values = {}
+    if not df.empty and "workload" in df.columns:
+        for (pt, mt), group in df.groupby(["plot_type", "metric_type"]):
+            real_x_values[(pt, mt)] = sorted(group["workload"].unique())
+
+    # Default x-values when no real data exists for a facet
+    default_x_values = {
+        "time": [10, 50, 100],
+        "memory": [0, 10, 50, 100, 500],
+    }
+
     # Create data for all 6 plots (3 metric types x 2 plot types)
     for metric_type in ["time_64b", "time_1500b", "memory"]:
         for plot_type in ["throughput", "latency"]:
+            if plot_type == "latency" and metric_type != "memory":
+                continue # skip adding stub data here
             for system in systems:
-                # Define x values based on metric type
-                if metric_type.startswith("time"):
-                    x_values = [10, 50, 100]  # packet processing in ns
-                else:  # memory
-                    x_values = [0, 10, 50, 100, 500]  # memory accesses in kB
+                # Use real x-values if available, otherwise defaults
+                if (plot_type, metric_type) in real_x_values:
+                    x_values = real_x_values[(plot_type, metric_type)]
+                elif metric_type.startswith("time"):
+                    x_values = default_x_values["time"]
+                else:
+                    x_values = default_x_values["memory"]
 
                 for x_val in x_values:
-                    # Calculate base value
-                    if metric_type.startswith("time"):
+                    if plot_type == "latency":
+                        value = 0
+                    elif metric_type.startswith("time"):
                         value = 2.5 - (x_val / 50)  # decreases with processing time
-                        if metric_type == "time_1500b":
+                        if system == "Wallet":
+                            value = 0.22 # best-case microbenchmark without VNFlet workload
+                        elif metric_type == "time_1500b":
                             value *= 0.6  # lower throughput for larger packets
                     else:  # memory
                         value = 2.2 - (x_val / 500) * 1.5  # decreases with memory access
+                        if system == "Wallet":
+                            value = 0.22
 
                     factor = 1
                     if system == "Slick":
                         factor = 1.5
 
                     value *= factor
-
-                    if plot_type == "latency":
-                        value = 3.5 - value
 
                     if (system, plot_type, metric_type) not in existing_combos:
                         rows += [[system, x_val, value, plot_type, metric_type]]
@@ -471,7 +489,7 @@ def main():
 
     # Adjust layout and save
     grid.figure.tight_layout(pad=0.1)
-    grid.figure.subplots_adjust(hspace=1.0)
+    grid.figure.subplots_adjust(hspace=1.0, left=0.05)
     grid.savefig(args.output.name)
     plt.close()
 
