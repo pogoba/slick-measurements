@@ -73,3 +73,9 @@ packet-overhead.pdf:
 		-o $(OUT_DIR)/packet-overhead.pdf \
 		--width $(TWIDTH) --height 2.5 \
 		--1 ./flake.nix
+
+network-performance.pdf:
+	python3 $(PYARGS) network-performance.py \
+		-o $(OUT_DIR)/network-performance.pdf \
+		--width $(TWIDTH) --height 2.5 \
+		--1 ./flake.nix

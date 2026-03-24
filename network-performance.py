@@ -20,7 +20,7 @@ import operator
 # resource on how to do stackplots:
 # https://stackoverflow.com/questions/59038979/stacked-bar-chart-in-seaborn
 
-PLOTTING_NAME="microbenchmarks"
+PLOTTING_NAME="network-performance"
 DEFAULT_OUTPUT=f"{PLOTTING_NAME}.pdf"
 
 hatches = _hatches.copy()
@@ -59,8 +59,8 @@ system_map = {
         'ebpf-linuxvm': 'XDP',
         }
 
-YLABEL = 'Processing time [ms]'
-XLABEL = 'System'
+YLABEL = 'Throughput [Gbps]'
+XLABEL = ''
 
 def map_hue(df_hue, hue_map):
     return df_hue.apply(lambda row: hue_map.get(str(row), row))
@@ -163,66 +163,25 @@ def main():
     # ax.set_yscale('log' if args.logarithmic else 'linear')
 
     log("Using hardcoded data")
-    # Hardcoded data to replace parse_data(df) and CSV reading
-    rows = []
-    # Data for each system and contributor (in nanoseconds)
+    variants = ["VM", "swiotlb", "vhost", "vhost-swiotlb", "snp", "snp-vhost", "snp-hpoll", "snp-vhost-hpoll", "snp-vhost-user", "Slick-vhost-user"]
+    gbps =     [3.4,        2.5,     3.6,             2.6,  0.59,        0.56,        3.05,              2.97,             38.9,              37.7 ]
 
-    # VMs
-    rows.append(['VMs', 'VM exit', 50000000])
-    rows.append(['VMs', 'De/encryption', 0])  # Not applicable for VMs
-    rows.append(['VMs', 'Bounce buffer', 0])  # Not applicable for VMs
-    rows.append(['VMs', 'Memory copy', 40000000])
-    rows.append(['VMs', 'Other', 10000000])
-
-    # CVMs
-    rows.append(['CVMs', 'VM exit', 55000000])
-    rows.append(['CVMs', 'De/encryption', 35000000])
-    rows.append(['CVMs', 'Bounce buffer', 30000000])
-    rows.append(['CVMs', 'Memory copy', 45000000])
-    rows.append(['CVMs', 'Other', 15000000])
-
-    # VMs \n(batched)
-    rows.append(['VMs (batched)', 'VM exit', 20000000])
-    rows.append(['VMs (batched)', 'De/encryption', 0])  # Not applicable for VMs
-    rows.append(['VMs (batched)', 'Bounce buffer', 0])  # Not applicable for VMs
-    rows.append(['VMs (batched)', 'Memory copy', 25000000])
-    rows.append(['VMs (batched)', 'Other', 5000000])
-
-    # CVMs \n(batched)
-    rows.append(['CVMs (batched)', 'VM exit', 25000000])
-    rows.append(['CVMs (batched)', 'De/encryption', 18000000])
-    rows.append(['CVMs (batched)', 'Bounce buffer', 15000000])
-    rows.append(['CVMs (batched)', 'Memory copy', 28000000])
-    rows.append(['CVMs (batched)', 'Other', 8000000])
-
-    data = pd.DataFrame(rows, columns=['system', 'label', 'nsec'])
+    df = pd.DataFrame({"system": variants, "Gbps": gbps})
+    df['system'] = pd.Categorical(df['system'], categories=variants, ordered=True)
 
     log("Preparing plotting data")
-    Contributors = [ "VM exit", "De/encryption", "Bounce buffer", "Memory copy", "Other" ]
-    data = data[data['label'].isin(Contributors)]
-    data['Contributor'] = data['label']
-    data['restart_s'] = data['nsec']
-    data = data[['system', 'Contributor', 'restart_s']]
-    df = data.groupby(['system', 'Contributor'])['restart_s'].mean().reset_index()
-    df['restart_s'] = df['restart_s']/1000000
-
-    # Set categorical order for systems
-    df['system'] = pd.Categorical(df['system'], ['VMs', 'CVMs', 'VMs (batched)', 'CVMs (batched)'])
-    # Rename VMs to vms
-    df['system'] = df['system'].cat.rename_categories({'VMs (batched)': 'VMs\n(batched) ', 'CVMs (batched)': 'CVMs\n (batched)'})
+    ax.set_axisbelow(True)
     # Plot using Seaborn
-    sns.histplot(
+    sns.barplot(
                data=df,
                x='system',
-               weights='restart_s',
-               hue="Contributor",
-               hue_order = ['VM exit', 'De/encryption', 'Bounce buffer', 'Memory copy', 'Other'],
-               multiple="stack",
-               # palette=palette,
+               y='Gbps',
                palette="deep",
                edgecolor="dimgray",
-               shrink=0.8,
+               ax=ax,
                )
+    for container in ax.containers:
+        ax.bar_label(container, fmt='%.2f')
 
     # sns.add_legend(
     #         # bbox_to_anchor=(0.5, 0.77),
@@ -279,22 +238,8 @@ def main():
     #             # log_scale=log_scale,
     #             ax=ax,
     #             )
-    sns.move_legend(
-        ax, "lower center",
-        bbox_to_anchor=(.5, 1.02), ncol=2, title=None, frameon=False,
-    )
-
-    color_hatch_map = dict()
-    # Fix the legend hatches
-    for i, legend_patch in enumerate(ax.get_legend().get_patches()):
-        hatch = hatches[i % len(hatches)]
-        legend_patch.set_hatch(f"{hatch}{hatch}")
-        color_hatch_map[legend_patch.get_facecolor()] = hatch
-        print(f"legend {hatch}")
-
-    for bar in ax.patches:
-        hatch = color_hatch_map[bar.get_facecolor()]
-        bar.set_hatch(hatch)
+    # Rotate x labels for readability
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=30, ha='right')
     #
     # sns.move_legend(
     #     grid, "lower center",
@@ -347,7 +292,6 @@ def main():
     # fig.tight_layout(rect = (0, 0, 0, 0.1))
     # ax.set_position((0.1, 0.1, 0.5, 0.8))
     plt.tight_layout(pad=0.1)
-    plt.subplots_adjust(top=0.7)
     plt.savefig(args.output.name)
     plt.close()
 
