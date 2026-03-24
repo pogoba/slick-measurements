@@ -182,18 +182,18 @@ def main():
     rows.append(['CVMs', 'Other', 15000000])
 
     # VMs \n(batched)
-    rows.append(['VMs \n(batched)', 'VM exit', 20000000])
-    rows.append(['VMs \n(batched)', 'De/encryption', 0])  # Not applicable for VMs
-    rows.append(['VMs \n(batched)', 'Bounce buffer', 0])  # Not applicable for VMs
-    rows.append(['VMs \n(batched)', 'Memory copy', 25000000])
-    rows.append(['VMs \n(batched)', 'Other', 5000000])
+    rows.append(['VMs (batched)', 'VM exit', 20000000])
+    rows.append(['VMs (batched)', 'De/encryption', 0])  # Not applicable for VMs
+    rows.append(['VMs (batched)', 'Bounce buffer', 0])  # Not applicable for VMs
+    rows.append(['VMs (batched)', 'Memory copy', 25000000])
+    rows.append(['VMs (batched)', 'Other', 5000000])
 
     # CVMs \n(batched)
-    rows.append(['CVMs \n(batched)', 'VM exit', 25000000])
-    rows.append(['CVMs \n(batched)', 'De/encryption', 18000000])
-    rows.append(['CVMs \n(batched)', 'Bounce buffer', 15000000])
-    rows.append(['CVMs \n(batched)', 'Memory copy', 28000000])
-    rows.append(['CVMs \n(batched)', 'Other', 8000000])
+    rows.append(['CVMs (batched)', 'VM exit', 25000000])
+    rows.append(['CVMs (batched)', 'De/encryption', 18000000])
+    rows.append(['CVMs (batched)', 'Bounce buffer', 15000000])
+    rows.append(['CVMs (batched)', 'Memory copy', 28000000])
+    rows.append(['CVMs (batched)', 'Other', 8000000])
 
     data = pd.DataFrame(rows, columns=['system', 'label', 'nsec'])
 
@@ -207,7 +207,9 @@ def main():
     df['restart_s'] = df['restart_s']/1000000
 
     # Set categorical order for systems
-    df['system'] = pd.Categorical(df['system'], ['VMs', 'CVMs', 'VMs \n(batched)', 'CVMs \n(batched)'])
+    df['system'] = pd.Categorical(df['system'], ['VMs', 'CVMs', 'VMs (batched)', 'CVMs (batched)'])
+    # Rename VMs to vms
+    df['system'] = df['system'].cat.rename_categories({'VMs (batched)': 'VMs\n(batched) ', 'CVMs (batched)': 'CVMs\n (batched)'})
     # Plot using Seaborn
     sns.histplot(
                data=df,
