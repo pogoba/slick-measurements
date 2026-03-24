@@ -79,3 +79,8 @@ network-performance.pdf:
 		-o $(OUT_DIR)/network-performance.pdf \
 		--width $(TWIDTH) --height 2.5 \
 		--1 ./flake.nix
+
+message-size.pdf:
+	python3 $(PYARGS) message-size.py \
+		-o $(OUT_DIR)/message-size.pdf \
+		--width $(WIDTH) --height 3

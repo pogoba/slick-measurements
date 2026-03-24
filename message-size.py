@@ -12,7 +12,7 @@ import pandas as pd
 from plotting import map_grid_titles
 import os
 
-PLOTTING_NAME="chain-scalability"
+PLOTTING_NAME="message-size"
 DEFAULT_OUTPUT=f"{PLOTTING_NAME}.pdf"
 
 COLORS = [ str(i) for i in range(20) ]
@@ -213,113 +213,60 @@ def mpps_to_gbitps(mpps, size):
 
 def main():
     parser = setup_parser()
-    args = parse_args(parser)
+    args = parser.parse_args()
 
-    fig = plt.figure(figsize=(args.width, args.height))
+    # IPC network communication data (extracted from IPC_log.pdf)
+    MESSAGE_SIZES = ["64B", "256B", "1KB", "8KB", "16KB", "64KB", "256KB", "1MB"]
+    MESSAGE_SIZES_BYTES = [64, 256, 1024, 8192, 16384, 65536, 262144, 1048576]
+    IPC_DATA = {
+        "Native":           [0.14,  0.12,  0.13,  0.16,  0.19,  0.25,  0.25,  0.26],
+        "LibOS (Gramine)":  [0.09,  0.085, 0.085, 0.11,  0.13,  0.35,  1.3,   7.0],
+        "Containers (Kata)":[0.6,   0.58,  0.65,  0.65,  0.7,   1.5,   3.0,   8.0],
+        "VM (KVM-Linux)":   [3.7,   3.6,   3.5,   3.6,   4.2,   5.0,   8.5,   14.0],
+        "CVM (SEV-SNP)":    [4.5,   4.3,   4.2,   4.5,   4.8,   5.5,   9.0,   16.0],
+        "Wallet":           [0.22,  0.20,  0.25,  0.27,  0.38,  0.40,  1.8,   6.0],
+    }
 
-    all_dfs = []
-
-    # Read throughput data
-    for color in COLORS:
-        if args.__dict__[color]:
-            arg_dfs = [ pd.read_csv(f.name) for f in args.__dict__[color] ]
-            arg_df = pd.concat(arg_dfs)
-            name = args.__dict__[f'{color}_name']
-            arg_df["system"] = name[0]
-            arg_df["plot_type"] = "throughput"
-            arg_df["y_value"] = arg_df["Mpps"]
-            all_dfs += [ arg_df ]
-
-    # Read latency data
-    for color in COLORS:
-        key = f"lat_{color}"
-        if args.__dict__[key]:
-            name = args.__dict__[f'{key}_name']
-            for f in args.__dict__[key]:
-                arg_df = pd.read_csv(f.name)
-                # Check for companion .csv with per-packet latency samples
-                csv_path = os.path.splitext(f.name)[0] + ".csv"
-                if os.path.exists(csv_path):
-                    lat_df = pd.read_csv(csv_path)
-                    # Use median to avoid pktgen outliers (see repl.py)
-                    arg_df["lat_us"] = lat_df["Latency"].quantile(0.5)
-                    arg_df["lat_us"] = arg_df["lat_us"] / 1000  # convert from ns to us
-                elif "lat_us" not in arg_df.columns:
-                    print(f"Warning: no latency data for {f.name}")
-                    arg_df["lat_us"] = np.nan
-                arg_df["system"] = name[0]
-                arg_df["plot_type"] = "latency"
-                arg_df["y_value"] = arg_df["lat_us"]
-                all_dfs += [ arg_df ]
-
-    if all_dfs:
-        df = pd.concat(all_dfs)
-    else:
-        df = pd.DataFrame(columns=['system', 'chaining', 'y_value', 'plot_type'])
-
-    columns = ['system', 'chaining', 'y_value', 'plot_type']
-    systems = [ "Insecure", "Secure", "Naive", "Slick" ]
-    chains = [ 2, 3, 4 ]
     rows = []
+    for system, times in IPC_DATA.items():
+        for size, time_ms in zip(MESSAGE_SIZES, times):
+            rows.append({"system": system, "message_size": size, "time_ms": time_ms})
+    for size, size_b in zip(MESSAGE_SIZES, MESSAGE_SIZES_BYTES):
+        if size == "64B":
+            gbit = 4.1
+            message_ps = gbit * 1024 * 1024 * 1024 / 8 / 64
+            time_ms = 1000 / message_ps
+            time_ms += 0.009 # latency
+        else:
+            gbit = 37.7
+            message_ps = gbit * 1024 * 1024 * 1024 / 8 / size_b
+            time_ms = 1000 / message_ps
+            time_ms += 0.016 # latency
+        rows.append({"system": "Slick", "message_size": size, "time_ms": time_ms})
+    df = pd.DataFrame(rows)
+    df["message_size"] = pd.Categorical(df["message_size"], categories=MESSAGE_SIZES, ordered=True)
 
-    existing_combos = set(zip(df["system"], df["plot_type"])) if not df.empty else set()
+    systems = list(dict.fromkeys(df["system"]))
 
-    # Create synthetic fallback data
-    for plot_type in ["throughput", "latency"]:
-        for system in systems:
-            if (system, plot_type) in existing_combos:
-                continue
-            for ch in chains:
-                value = 0
-                if ch == 1:
-                    value = 2
-                elif ch == 4:
-                    value = 1
-                elif ch == 16:
-                    value = 0.8
+    fig, ax = plt.subplots(figsize=(args.width, args.height))
 
-                factor = 1
-                if system == "Slick":
-                    factor = 1.5
+    ax.set_axisbelow(True)
+    ax.grid(True)
 
-                value *= factor
+    sns.lineplot(
+        data=df,
+        x="message_size",
+        y="time_ms",
+        hue="system",
+        hue_order=systems,
+        style="system",
+        style_order=systems,
+        markers=True,
+        errorbar='ci',
+        ax=ax,
+    )
 
-                if plot_type == "latency":
-                    value = 3.5 - value
-
-                rows += [[system, ch, value, plot_type]]
-
-    df = pd.concat([df, pd.DataFrame(rows, columns=columns)])
-    systems += [ s for s in df['system'].unique() if s not in systems ]
-
-
-
-    # Create FacetGrid for side-by-side plots
-    grid = sns.FacetGrid(df, col='plot_type', height=args.height, aspect=args.width/(2*args.height),
-                         sharey=False, sharex=True)
-
-    # Set axis below for all subplots
-    for ax in grid.axes.flat:
-        ax.set_axisbelow(True)
-        ax.grid(True)
-
-    # Map lineplot to each facet
-    grid.map_dataframe(sns.lineplot,
-                      x="chaining",
-                      y="y_value",
-                      hue="system",
-                      hue_order=systems,
-                      style="system",
-                      style_order=systems,
-                      markers=True,
-                      errorbar='ci')
-
-    if not args.logarithmic:
-        for ax in grid.axes.flat:
-            ax.set_ylim(bottom=0)
-    else:
-        for ax in grid.axes.flat:
-            ax.set_xscale('log')
+    ax.set_yscale('log')
 
     def rename_legend_labels(ax, label_map):
         if ax.get_legend() is not None:
@@ -327,25 +274,11 @@ def main():
                 if text.get_text() in label_map:
                     text.set_text(label_map[text.get_text()])
 
-    # Apply legend renaming to each axis
-    for ax in grid.axes.flat:
-        rename_legend_labels(ax, LEGEND_MAP)
-
-    # Add legend to the grid
-    grid.add_legend(title=None, frameon=False)
+    rename_legend_labels(ax, LEGEND_MAP)
 
     # Position the legend outside the plot area
-    if grid._legend:
-        # sns.move_legend(grid, "center left", bbox_to_anchor=(1.02, 0.5), ncol=1, title=None, frameon=False)
-        n_labels = len(grid._legend.get_texts())
-        sns.move_legend(grid, "upper center", bbox_to_anchor=(0.5, 1.08), ncol=n_labels, title=None, frameon=False)
-    # plot.add_legend(
-    #         bbox_to_anchor=(0.55, 0.3),
-    #         loc='upper left',
-    #         ncol=3, title=None, frameon=False,
-    #                 )
-
-    grid.figure.set_size_inches(args.width, args.height)
+    sns.move_legend(ax, "upper center", bbox_to_anchor=(0.5, 1.4),
+                    ncol=3, title=None, frameon=False)
 
     # if args.compress:
     #     # empty  name1 name2 ...
@@ -373,16 +306,7 @@ def main():
     #                         ncol=3, title=None, frameon=False,
     #                         )
 
-    # Add annotation to first subplot only
-    grid.axes.flat[0].annotate(
-        "↑ Higher is better", # or ↓ ← ↑ →
-        xycoords="axes points",
-        xy=(10, 0),
-        xytext=(-25, -27),
-        color="navy",
-        weight="bold",
-    )
-    grid.axes.flat[1].annotate(
+    ax.annotate(
         "↓ Lower is better", # or ↓ ← ↑ →
         xycoords="axes points",
         xy=(10, 0),
@@ -391,20 +315,13 @@ def main():
         weight="bold",
     )
 
-    # Set axis labels (different y-axis for each subplot)
-    for i, ax in enumerate(grid.axes.flat):
-        ax.set_xlabel('                          Chain length')
-        if i == 0:
-            ax.set_ylabel('Throughput [Mpps]')
-        else:
-            ax.set_ylabel('Latency [us]')
-
-    map_grid_titles(grid, grid_title_map)
+    ax.set_xlabel('Message size')
+    ax.set_ylabel('Time (ms)')
 
     # Adjust layout and save
-    grid.figure.tight_layout(pad=0.1)
-    grid.figure.subplots_adjust(top=0.8)
-    grid.savefig(args.output.name)
+    fig.tight_layout(pad=0.1)
+    fig.subplots_adjust(top=0.75)
+    fig.savefig(args.output.name)
     plt.close()
 
 
