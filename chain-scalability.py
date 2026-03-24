@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import seaborn as sns
@@ -257,7 +259,7 @@ def main():
 
     columns = ['system', 'chaining', 'y_value', 'plot_type']
     systems = [ "Insecure", "Secure", "Naive", "Slick" ]
-    chains = [ 1, 4, 16 ]
+    chains = [ 2, 3, 4 ]
     rows = []
 
     existing_combos = set(zip(df["system"], df["plot_type"])) if not df.empty else set()

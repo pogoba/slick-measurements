@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use("Agg")
 from matplotlib.axes import Axes
 from matplotlib.patches import Rectangle
 from pandas import DataFrame
