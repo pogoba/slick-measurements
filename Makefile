@@ -8,6 +8,7 @@ PAPER_FIGURES := app-throughput.pdf chain-scalability.pdf microbenchmarks.pdf pa
 
 WIDTH := 5.0
 WIDTH2 := 5.5
+WIDTH3 := 3.5
 DWIDTH := 11
 DWIDTH2 := 13
 TWIDTH := 3.5
@@ -83,4 +84,4 @@ network-performance.pdf:
 message-size.pdf:
 	python3 $(PYARGS) message-size.py \
 		-o $(OUT_DIR)/message-size.pdf \
-		--width $(WIDTH) --height 3
+		--width $(WIDTH3) --height 3

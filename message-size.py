@@ -277,8 +277,8 @@ def main():
     rename_legend_labels(ax, LEGEND_MAP)
 
     # Position the legend outside the plot area
-    sns.move_legend(ax, "upper center", bbox_to_anchor=(0.5, 1.4),
-                    ncol=3, title=None, frameon=False)
+    sns.move_legend(ax, "upper center", bbox_to_anchor=(0.4, 1.6),
+                    ncol=2, title=None, frameon=False)
 
     # if args.compress:
     #     # empty  name1 name2 ...
@@ -310,17 +310,21 @@ def main():
         "↓ Lower is better", # or ↓ ← ↑ →
         xycoords="axes points",
         xy=(10, 0),
-        xytext=(-25, -27),
+        xytext=(-45, -27),
         color="navy",
         weight="bold",
     )
+
+    for i, label in enumerate(ax.get_xticklabels()):
+        if i % 2 != 0:
+            label.set_visible(False)
 
     ax.set_xlabel('Message size')
     ax.set_ylabel('Time (ms)')
 
     # Adjust layout and save
-    fig.tight_layout(pad=0.1)
-    fig.subplots_adjust(top=0.75)
+    fig.tight_layout(pad=0.01)
+    fig.subplots_adjust(top=0.7)
     fig.savefig(args.output.name)
     plt.close()
 
