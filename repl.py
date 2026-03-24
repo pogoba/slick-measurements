@@ -60,7 +60,7 @@ def cycles2ns(cycles, freq_mhz=1996):
 
 
 
-save_dont_display = None | str # none or path
+save_dont_display = None # none or path
 
 def save(plotting_fn, filename):
     global save_dont_display
@@ -168,6 +168,7 @@ def parse_latency_csv(systems=None, **kwargs):
                 # Mean doesnt work therefore, use median.
                 df["lat_us"] = lat_df["Latency"].quantile(0.5)
                 # df["lat_us"] = lat_df["Latency"].mean()
+                df["lat_us"] = df["lat_us"] / 1000 # convert from ns to us
 
             else:
                 print(f"Warning: no matching csv for {p}")
