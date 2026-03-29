@@ -61,17 +61,24 @@ def cycles2ns(cycles, freq_mhz=1996):
 
 
 save_dont_display = None # none or path
+save_dont_display_magnify = None
 
-def save(plotting_fn, filename):
+def save(plotting_fn, filename, magnify=2):
     global save_dont_display
+    global save_dont_display_magnify
     save_dont_display = filename
+    save_dont_display_magnify = magnify
     plotting_fn()
     save_dont_display = None
+    save_dont_display_magnify = None
 
 def display(fig, block=False):
 
     if save_dont_display is not None:
-        fig.write_image(save_dont_display, scale=3)
+        height = 500 / save_dont_display_magnify
+        width = 700 / save_dont_display_magnify
+        fig.update_layout(margin=dict(l=0, r=0, t=50, b=0))
+        fig.write_image(save_dont_display, scale=3*save_dont_display_magnify, width=width, height=height)
         return
 
     html_file = tempfile.NamedTemporaryFile(suffix=".html", delete=False)
@@ -260,7 +267,7 @@ def cpu_normalization(df):
 
 def throughput(pktsize=64, normalized=False):
     df = parse_data({
-        "Optimal": f"{DATA}/userspace_mirror_b32_*ns_0b_c2_{pktsize}b_rep*.log",
+        # "Optimal": f"{DATA}/userspace_mirror_b32_*ns_0b_c2_{pktsize}b_rep*.log",
         "Insecure": f"{DATA}/userspace_insecure_b32_*ns_0b_c2_{pktsize}b_rep*.log",
         "Secure": f"./data/out10-output3v2/multivm_mirror_b32_*ns_0b_c0_v2_{pktsize}b_rep*.log",
         "Naive": f"{DATA}/userspace_noiomgr_b32_*ns_0b_c2_{pktsize}b_rep*.log",
@@ -301,7 +308,7 @@ def latency(pktsize=64):
 
 def chaining(pktsize=64, normalized=False):
     df = parse_data({
-        "Optimal": f"{DATA}/userspace_mirror_b32_0ns_0b_c*_{pktsize}b_rep*.log",
+        # "Optimal": f"{DATA}/userspace_mirror_b32_0ns_0b_c*_{pktsize}b_rep*.log",
         "Insecure": f"{DATA}/userspace_insecure_b32_0ns_0b_c*_{pktsize}b_rep*.log",
         "Secure": f"./data/out10-output3v2/multivm_mirror_b32_0ns_0b_c0_v*_{pktsize}b_rep*.log",
         "Naive": f"{DATA}/userspace_noiomgr_b32_0ns_0b_c*_{pktsize}b_rep*.log",
