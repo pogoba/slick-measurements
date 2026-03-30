@@ -289,7 +289,7 @@ def main():
 
                 rows += [[system, ch, value, plot_type]]
 
-    df = pd.concat([df, pd.DataFrame(rows, columns=columns)])
+    df = pd.concat([df, pd.DataFrame(rows, columns=columns)], ignore_index=True)
     systems += [ s for s in df['system'].unique() if s not in systems ]
 
 
@@ -390,6 +390,7 @@ def main():
         color="navy",
         weight="bold",
     )
+    grid.axes.flat[1].set_ylim(top=400)
 
     # Set axis labels (different y-axis for each subplot)
     for i, ax in enumerate(grid.axes.flat):
