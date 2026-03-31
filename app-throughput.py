@@ -184,20 +184,36 @@ def main():
 
     log("Preparing plotting data")
 
+    all_dfs = []
 
-    columns = ['size', 'vnf', 'msec']
-    sizes = [ "64", "256", "1024", "1508" ]
-    vnfs = [ "Native", "LibOS (Gramine)", "Containers (Kata)", "VM (KVM-Linux)", "CVM (SEV-SNP)", "Wallet", "Slick" ]
-    rows = []
+    # Read throughput data from file arguments
+    for color in COLORS:
+        if args.__dict__[color]:
+            log(f"Reading files for --{color}-name")
+            arg_dfs = [pd.read_csv(f.name) for f in tqdm(args.__dict__[color])]
+            arg_df = pd.concat(arg_dfs)
+            name = args.__dict__[f'{color}_name']
+            arg_df["vnf"] = name
+            arg_df["size"] = arg_df["pktsize"].astype(int).astype(str)
+            arg_df["msec"] = arg_df["Mpps"]
+            all_dfs.append(arg_df)
+
+    if all_dfs:
+        df = pd.concat(all_dfs, ignore_index=True)
+    else:
+        df = pd.DataFrame(columns=['size', 'vnf', 'msec'])
+
+    # Add synthetic Wallet baseline (same as microbenchmarks.py)
+    vnfs = ["Insecure", "Secure", "Wallet", "Naive", "Slick"]
+    sizes = sorted(df['size'].unique()) if not df.empty else ["64", "256", "1024", "1508"]
+    existing_vnfs = set(df['vnf'].unique()) if not df.empty else set()
+    wallet_rows = []
     for size in sizes:
-        for vnf in vnfs:
-            value = 1
-            if vnf == "Wallet":
-                value = 0.5
-            if vnf == "Slick":
-                value = 2
-            rows += [[size, vnf, value]]
-    df = pd.DataFrame(rows, columns=columns)
+        if "Wallet" not in existing_vnfs:
+            wallet_rows.append([size, "Wallet", 0.22])
+    if wallet_rows:
+        df = pd.concat([df, pd.DataFrame(wallet_rows, columns=['size', 'vnf', 'msec'])], ignore_index=True)
+    vnfs += [v for v in df['vnf'].unique() if v not in vnfs]
 
 
     df['size'] = df['size'].apply(lambda row: size_map.get(str(row), row))
