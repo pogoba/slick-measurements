@@ -180,6 +180,8 @@ def main():
                edgecolor="dimgray",
                ax=ax,
                )
+    for i, bar in enumerate(ax.patches):
+        bar.set_hatch(hatches[i % len(hatches)])
     for container in ax.containers:
         ax.bar_label(container, fmt='%.2f')
 
