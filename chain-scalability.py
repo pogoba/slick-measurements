@@ -258,18 +258,26 @@ def main():
         df = pd.DataFrame(columns=['system', 'chaining', 'y_value', 'plot_type'])
 
     columns = ['system', 'chaining', 'y_value', 'plot_type']
-    systems = [ "Insecure", "Secure", "Naive", "Slick" ]
+    systems = [ "Insecure", "Secure", "Wallet", "Naive", "Slick" ]
     chains = [ 2, 3, 4 ]
     rows = []
 
     existing_combos = set(zip(df["system"], df["plot_type"])) if not df.empty else set()
+
+    # Extract real x-values per plot_type from data
+    real_x_values = {}
+    if not df.empty and "chaining" in df.columns:
+        for pt, group in df.groupby("plot_type"):
+            real_x_values[pt] = sorted(group["chaining"].unique())
 
     # Create synthetic fallback data
     for plot_type in ["throughput", "latency"]:
         for system in systems:
             if (system, plot_type) in existing_combos:
                 continue
-            for ch in chains:
+            x_values = real_x_values.get(plot_type, chains)
+            for ch in x_values:
+
                 value = 0
                 if ch == 1:
                     value = 2
@@ -278,14 +286,22 @@ def main():
                 elif ch == 16:
                     value = 0.8
 
-                factor = 1
-                if system == "Slick":
-                    factor = 1.5
-
-                value *= factor
+                if plot_type == "throughput" and system == "Wallet":
+                    value = 0.22 / ch
+                else:
+                    factor = 1
+                    if system == "Slick":
+                        factor = 1.5
+                    value *= factor
 
                 if plot_type == "latency":
-                    value = 3.5 - value
+                    if system == "Wallet":
+                        # dont show Wallet latency because it doesnt fit into the plot
+                        # value = ((1.0 / (0.22 * 1000 * 1000)) * 32) * ch # (((1s / pps) * batchsize) + workload) * CHAINING
+                        # value *= 1000 * 1000 # s -> us
+                        continue
+                    else:
+                        value = 3.5 - value
 
                 rows += [[system, ch, value, plot_type]]
 
