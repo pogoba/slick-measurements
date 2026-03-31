@@ -324,7 +324,7 @@ def main():
         legend_patch.set_hatch(f"{hatch_map[vnf]}{hatch_map[vnf]}")
         legend_patch.set_facecolor(color_map[vnf])
     n_labels = len(ax.get_legend().get_texts())
-    sns.move_legend(ax, "upper center", bbox_to_anchor=(0.5, 1.3), ncol=n_labels, title=None, frameon=False)
+    sns.move_legend(ax, "upper center", bbox_to_anchor=(0.5, 1.05), ncol=n_labels, title=None, frameon=False, bbox_transform=fig.transFigure)
     #
     # sns.move_legend(
     #     grid, "lower center",
