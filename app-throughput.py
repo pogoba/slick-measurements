@@ -210,11 +210,10 @@ def main():
     wallet_rows = []
     for size in sizes:
         if "Wallet" not in existing_vnfs:
-            # 64B: 298523.12k ps -> 1500B: 1084428.52k ps -> factor 23.4
             if size == "64":
-                wallet_rows.append([size, "Wallet", 0.214]) # nspp2mpps(mpps2nspp(0.22) + (2700ns for chacha20-poly1305) / (23.4 to scale crypto overhead down for 64B))
+                wallet_rows.append([size, "Wallet", 0.188]) # nspp2mpps(mpps2nspp(0.22) + (770ns for chacha20-poly1305))
             elif size == "1500":
-                wallet_rows.append([size, "Wallet", 0.138]) # nspp2mpps(mpps2nspp(0.22) + 2700ns for chacha20-poly1305)
+                wallet_rows.append([size, "Wallet", 0.152]) # nspp2mpps(mpps2nspp(0.22) + 2002ns for chacha20-poly1305)
     if wallet_rows:
         df = pd.concat([df, pd.DataFrame(wallet_rows, columns=['size', 'vnf', 'msec'])], ignore_index=True)
     vnfs += [v for v in df['vnf'].unique() if v not in vnfs]
