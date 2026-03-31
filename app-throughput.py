@@ -190,7 +190,7 @@ def main():
     for color in COLORS:
         if args.__dict__[color]:
             log(f"Reading files for --{color}-name")
-            arg_dfs = [pd.read_csv(f.name) for f in tqdm(args.__dict__[color])]
+            arg_dfs = [pd.read_csv(f.name) for f in args.__dict__[color]]
             arg_df = pd.concat(arg_dfs)
             name = args.__dict__[f'{color}_name']
             arg_df["vnf"] = name
@@ -210,17 +210,26 @@ def main():
     wallet_rows = []
     for size in sizes:
         if "Wallet" not in existing_vnfs:
-            wallet_rows.append([size, "Wallet", 0.22])
+            # 64B: 298523.12k ps -> 1500B: 1084428.52k ps -> factor 23.4
+            if size == "64":
+                wallet_rows.append([size, "Wallet", 0.214]) # nspp2mpps(mpps2nspp(0.22) + (2700ns for chacha20-poly1305) / (23.4 to scale crypto overhead down for 64B))
+            elif size == "1500":
+                wallet_rows.append([size, "Wallet", 0.138]) # nspp2mpps(mpps2nspp(0.22) + 2700ns for chacha20-poly1305)
     if wallet_rows:
         df = pd.concat([df, pd.DataFrame(wallet_rows, columns=['size', 'vnf', 'msec'])], ignore_index=True)
     vnfs += [v for v in df['vnf'].unique() if v not in vnfs]
+
+    # Ensure barplot ordering matches vnfs list
+    hue_order = vnfs
 
 
     df['size'] = df['size'].apply(lambda row: size_map.get(str(row), row))
     df['vnf'] = df['vnf'].apply(lambda row: hue_map.get(str(row), row))
 
-    # map colors to hues
-    colors = sns.color_palette("pastel", len(df['vnf'].unique())-1) + [ mcolors.to_rgb('sandybrown') ]
+    # map colors and hatches to hues (keyed by hue_order for consistency)
+    colors = sns.color_palette("pastel", len(hue_order)-1) + [ mcolors.to_rgb('sandybrown') ]
+    hatch_map = {vnf: hatches[i % len(hatches)] for i, vnf in enumerate(hue_order)}
+    color_map = {vnf: colors[i % len(colors)] for i, vnf in enumerate(hue_order)}
     # palette = dict(zip(df['hue'].unique(), colors))
 
     # Only removes outliers that are excessive (e.g. 1000ms from a median of 15ms).
@@ -238,19 +247,22 @@ def main():
     log("Plotting data")
 
     # Plot using Seaborn
+    size_order = sorted(df['size'].unique(), key=lambda s: int(s))
     sns.barplot(
                data=df,
                x='size',
                y='msec',
+               order=size_order,
                hue="vnf",
+               hue_order=hue_order,
                # palette=palette,
                palette="deep",
                saturation=1,
                edgecolor="dimgray",
                )
 
-    mybarplot.add_hatches(data=df, x='size', y='msec', hue='vnf', ax=ax, hatch_by='vnf', hatches=hatches)
-    mybarplot.add_colors(data=df, x='size', y='msec', hue='vnf', ax=ax, color_by='vnf', colors=colors)
+    mybarplot.add_hatches(data=df, x='size', y='msec', hue='vnf', ax=ax, hatch_by='vnf', hatches=hatch_map)
+    mybarplot.add_colors(data=df, x='size', y='msec', hue='vnf', ax=ax, color_by='vnf', colors=color_map)
     # sns.add_legend(
     #         # bbox_to_anchor=(0.5, 0.77),
     #         loc='right',
@@ -308,15 +320,11 @@ def main():
     #             )
     # Fix the legend hatches
     for i, legend_patch in enumerate(ax.get_legend().get_patches()):
-        hatch = hatches[i % len(hatches)]
-        color = colors[i % len(colors)]
-        legend_patch.set_hatch(f"{hatch}{hatch}")
-        legend_patch.set_facecolor(color)
-    sns.move_legend(
-        ax, "upper right",
-        title="VNF",
-        # bbox_to_anchor=(.5, 1), ncol=3, title=None, frameon=False,
-    )
+        vnf = hue_order[i]
+        legend_patch.set_hatch(f"{hatch_map[vnf]}{hatch_map[vnf]}")
+        legend_patch.set_facecolor(color_map[vnf])
+    n_labels = len(ax.get_legend().get_texts())
+    sns.move_legend(ax, "upper center", bbox_to_anchor=(0.5, 1.3), ncol=n_labels, title=None, frameon=False)
     #
     # sns.move_legend(
     #     grid, "lower center",
@@ -369,8 +377,8 @@ def main():
     # legend.get_frame().set_alpha(0.8)
     # fig.tight_layout(rect = (0, 0, 0, 0.1))
     # ax.set_position((0.1, 0.1, 0.5, 0.8))
-    plt.tight_layout(pad=0.5)
-    # plt.subplots_adjust(right=0.78)
+    plt.tight_layout(pad=0.1)
+    plt.subplots_adjust(top=0.85, right=0.98)
     # fig.tight_layout(rect=(0, 0, 0.3, 1))
     plt.savefig(args.output.name)
     plt.close()

@@ -29,7 +29,7 @@ install:
 app-throughput.pdf:
 	python3 $(PYARGS) app-throughput.py \
 		-o $(OUT_DIR)/app-throughput.pdf \
-		--width $(WIDTH) --height 2 \
+		--width $(WIDTH2) --height 2 \
     --1-name "Insecure" --1 $(DATA)/vm_insecure_real_b32_0ns_0b_c3_*b_rep*.log \
     --2-name "Secure" --2 $(DATA)/multivm_mirror_real_b32_0ns_0b_c0_v3_*b_rep*.log \
     --3-name "Naive" --3 $(DATA)/vm_noiomgr_real_b32_0ns_0b_c3_*b_rep*.log \
