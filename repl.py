@@ -15,7 +15,7 @@ def foobar():
 
 SIZE_SMALL = 64
 SIZE_BIG = 1522
-DATA = "./data/out9-output2v2/"
+DATA = "./data/out16-output5/"
 
 def ns2s(ns) -> float:
     return ns / 1e9
@@ -268,10 +268,10 @@ def cpu_normalization(df):
 def throughput(pktsize=64, normalized=False):
     df = parse_data({
         # "Optimal": f"{DATA}/userspace_mirror_b32_*ns_0b_c2_{pktsize}b_rep*.log",
-        "Insecure": f"{DATA}/userspace_insecure_b32_*ns_0b_c2_{pktsize}b_rep*.log",
-        "Secure": f"./data/out10-output3v2/multivm_mirror_b32_*ns_0b_c0_v2_{pktsize}b_rep*.log",
-        "Naive": f"{DATA}/userspace_noiomgr_b32_*ns_0b_c2_{pktsize}b_rep*.log",
-        "Slick": f"{DATA}/userspace_iomgr_b32_*ns_0b_c2_{pktsize}b_rep*.log",
+        "Insecure": f"{DATA}/vm_insecure_synthetic_b32_*ns_0b_c2_{pktsize}b_rep*.log",
+        "Secure": f"{DATA}/multivm_mirror_synthetic_b32_*ns_0b_c0_v2_{pktsize}b_rep*.log",
+        "Naive": f"{DATA}/vm_noiomgr_synthetic_b32_*ns_0b_c2_{pktsize}b_rep*.log",
+        "Slick": f"{DATA}/vm_iomgr_synthetic_b32_*ns_0b_c2_{pktsize}b_rep*.log",
     })
     title = f"b=32; c=2; pktsize={pktsize}"
     if normalized:
@@ -282,11 +282,11 @@ def throughput(pktsize=64, normalized=False):
 def throughput_memorywl(pktsize=64, normalized=False):
     # DATA = "./data/out7/"
     df = parse_data({
-        "Optimal": f"{DATA}/userspace_mirror_b32_0ns_*b_c2_{pktsize}b_rep*.log",
-        "Insecure": f"{DATA}/userspace_insecure_b32_0ns_*b_c2_{pktsize}b_rep*.log",
-        "Secure": f"./data/out10-output3v2/multivm_mirror_b32_0ns_*b_c0_v2_{pktsize}b_rep*.log",
-        "Naive": f"{DATA}/userspace_noiomgr_b32_0ns_*b_c2_{pktsize}b_rep*.log",
-        "Slick": f"{DATA}/userspace_iomgr_b32_0ns_*b_c2_{pktsize}b_rep*.log",
+        "Optimal": f"{DATA}/vm_mirror_synthetic_b32_0ns_*b_c2_{pktsize}b_rep*.log",
+        "Insecure": f"{DATA}/vm_insecure_synthetic_b32_0ns_*b_c2_{pktsize}b_rep*.log",
+        "Secure": f"{DATA}/multivm_mirror_synthetic_b32_0ns_*b_c0_v2_{pktsize}b_rep*.log",
+        "Naive": f"{DATA}/vm_noiomgr_synthetic_b32_0ns_*b_c2_{pktsize}b_rep*.log",
+        "Slick": f"{DATA}/vm_iomgr_synthetic_b32_0ns_*b_c2_{pktsize}b_rep*.log",
     })
     title = f"b=32; c=2; pktsize={pktsize}"
     if normalized:
@@ -297,11 +297,11 @@ def throughput_memorywl(pktsize=64, normalized=False):
 def latency(pktsize=64):
     # df = parse_data({
     df = parse_latency_csv({
-        "Optimal": f"{DATA}/vm_lat_mirror_b32_*ns_c2_{pktsize}b_rep*.log",
-        "Insecure": f"{DATA}/vm_lat_insecure_b32_*ns_c2_{pktsize}b_rep*.log",
-        "Secure": f"./data/out10-output3v2/multivm_mirror_b32_0ns_*b_c0_v2_{pktsize}b_rep*.log",
-        "Naive": f"{DATA}/vm_lat_noiomgr_b32_*ns_c2_{pktsize}b_rep*.log",
-        "Slick": f"{DATA}/vm_lat_iomgr_b32_*ns_c2_{pktsize}b_rep1.log",
+        # "Optimal": f"{DATA}/vm_lat_mirror_synthetic_b32_*ns_c2_{pktsize}b_rep*.log",
+        "Insecure": f"{DATA}/vm_lat_insecure_synthetic_b32_*ns_0b_c2_{pktsize}b_rep*.log",
+        "Secure": f"{DATA}/multivm_lat_mirror_synthetic_b32_*ns_0b_c0_v2_{pktsize}b_rep*.log",
+        "Naive": f"{DATA}/vm_lat_noiomgr_synthetic_b32_*ns_0b_c2_{pktsize}b_rep*.log",
+        "Slick": f"{DATA}/vm_lat_iomgr_synthetic_b32_*ns_0b_c2_{pktsize}b_rep1.log",
     })
     title = f"b=32; c=2; pktsize={pktsize}"
     latency_vs_workload(df, title=title)
@@ -309,10 +309,10 @@ def latency(pktsize=64):
 def chaining(pktsize=64, normalized=False):
     df = parse_data({
         # "Optimal": f"{DATA}/userspace_mirror_b32_0ns_0b_c*_{pktsize}b_rep*.log",
-        "Insecure": f"{DATA}/userspace_insecure_b32_0ns_0b_c*_{pktsize}b_rep*.log",
-        "Secure": f"./data/out10-output3v2/multivm_mirror_b32_0ns_0b_c0_v*_{pktsize}b_rep*.log",
-        "Naive": f"{DATA}/userspace_noiomgr_b32_0ns_0b_c*_{pktsize}b_rep*.log",
-        "Slick": f"{DATA}/userspace_iomgr_b32_0ns_0b_c*_{pktsize}b_rep*.log",
+        "Insecure": f"{DATA}/vm_insecure_synthetic_b32_0ns_0b_c*_{pktsize}b_rep*.log",
+        "Secure": f"{DATA}/multivm_mirror_synthetic_b32_0ns_0b_c0_v*_{pktsize}b_rep*.log",
+        "Naive": f"{DATA}/vm_noiomgr_synthetic_b32_0ns_0b_c*_{pktsize}b_rep*.log",
+        "Slick": f"{DATA}/vm_iomgr_synthetic_b32_0ns_0b_c*_{pktsize}b_rep*.log",
     })
     title = f"b=32; pktsize={pktsize}"
     if normalized:
