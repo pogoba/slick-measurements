@@ -336,6 +336,8 @@ def main():
             if plot_type == "latency" and metric_type != "memory":
                 continue # skip adding stub data here
             for system in systems:
+                if plot_type == "latency" and metric_type == "memory" and system == "Wallet":
+                    continue
                 # Use real x-values if available, otherwise defaults
                 if (plot_type, metric_type) in real_x_values:
                     x_values = real_x_values[(plot_type, metric_type)]
@@ -403,6 +405,15 @@ def main():
     else:
         for ax in grid.axes.flat:
             ax.set_xscale('log')
+
+    # Set upper ylim for latency plots based on highest value, ignoring "Secure"
+    latency_df = df[(df["plot_type"] == "latency") & (df["system"] != "Secure")]
+    for i, po in enumerate(plot_order):
+        if po.startswith("latency_"):
+            facet_df = latency_df[latency_df["plot_order"] == po]
+            if not facet_df.empty:
+                max_val = facet_df["y_value"].max()
+                grid.axes.flat[i].set_ylim(top=max_val * 1.1)
 
     def rename_legend_labels(ax, label_map):
         if ax.get_legend() is not None:

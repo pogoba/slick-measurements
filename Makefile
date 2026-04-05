@@ -1,7 +1,7 @@
 .PHONY: repl
 
-OUT_DIR := ./
-DATA := ./data/out9-output2v2/
+OUT_DIR := ./pdfs/out16-output5
+DATA := ./data/out16-output5
 ROOT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 PYARGS :=
 PAPER_FIGURES := app-throughput.pdf chain-scalability.pdf microbenchmarks.pdf packet-overhead.pdf
@@ -40,32 +40,31 @@ chain-scalability.pdf:
 	python3 $(PYARGS) chain-scalability.py \
 		-o $(OUT_DIR)/chain-scalability.pdf \
 		--width $(WIDTH) --height 2 \
-    --1-name "Insecure" --1 $(DATA)/vm_insecure_b32_0ns_0b_c*_1500b_rep*.log \
-    --2-name "Secure" --2 $(DATA)/multivm_mirror_b32_0ns_0b_c0_v*_1500b_rep*.log \
-    --3-name "Naive" --3 $(DATA)/vm_noiomgr_b32_0ns_0b_c*_1500b_rep*.log \
-    --4-name "Slick" --4 $(DATA)/vm_iomgr_b32_0ns_0b_c*_1500b_rep*.log \
+    --1-name "Insecure" --1 $(DATA)/vm_insecure_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
+    --2-name "Secure" --2 $(DATA)/multivm_mirror_synthetic_b32_0ns_0b_c0_v*_1500b_rep*.log \
+    --3-name "Naive" --3 $(DATA)/vm_noiomgr_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
+    --4-name "Slick" --4 $(DATA)/vm_iomgr_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
     \
-    --lat-1-name "Insecure" --lat-1 $(DATA)/vm_lat_insecure_b32_0ns_0b_c*_1500b_rep*.log \
-    --lat-2-name "Secure" --lat-2 $(DATA)/multivm_lat_mirror_b32_0ns_0b_c0_v*_1500b_rep*.log \
-    --lat-3-name "Naive" --lat-3 $(DATA)/vm_lat_noiomgr_b32_0ns_0b_c*_1500b_rep*.log \
-    --lat-4-name "Slick" --lat-4 $(DATA)/vm_lat_iomgr_b32_0ns_0b_c*_1500b_rep*.log \
+    --lat-1-name "Insecure" --lat-1 $(DATA)/vm_lat_insecure_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
+    --lat-2-name "Secure" --lat-2 $(DATA)/multivm_lat_mirror_synthetic_b32_0ns_0b_c0_v*_1500b_rep*.log \
+    --lat-3-name "Naive" --lat-3 $(DATA)/vm_lat_noiomgr_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
+    --lat-4-name "Slick" --lat-4 $(DATA)/vm_lat_iomgr_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
 
 
 microbenchmarks.pdf:
 	python3 $(PYARGS) microbenchmarks.py \
 		-o $(OUT_DIR)/microbenchmarks.pdf \
 		--width $(WIDTH) --height 4.3 \
-    --1-name "Insecure" --1 $(DATA)/userspace_insecure_b32_*ns_*b_c2_*b_rep*.log \
-    --2-name "Secure" --2 ./data/out10-output3v2/multivm_mirror_b32_*ns_*b_c0_v2_*b_rep*.log \
-    --3-name "Naive" --3 $(DATA)/userspace_noiomgr_b32_*ns_*b_c2_*b_rep*.log \
-    --4-name "Slick" --4 $(DATA)/userspace_iomgr_b32_*ns_*b_c2_*b_rep*.log \
+    --1-name "Insecure" --1 $(DATA)/vm_insecure_synthetic_b32_*ns_*b_c2_*b_rep*.log \
+    --2-name "Secure" --2 $(DATA)/multivm_mirror_synthetic_b32_*ns_*b_c0_v2_*b_rep*.log \
+    --3-name "Naive" --3 $(DATA)/vm_noiomgr_synthetic_b32_*ns_*b_c2_*b_rep*.log \
+    --4-name "Slick" --4 $(DATA)/vm_iomgr_synthetic_b32_*ns_*b_c2_*b_rep*.log \
     \
-    --lat-1-name "Insecure" --lat-1 $(DATA)/vm_lat_insecure_b32_*ns_c2_*b_rep*.log \
-    --lat-3-name "Naive" --lat-3 $(DATA)/vm_lat_noiomgr_b32_*ns_c2_*b_rep*.log \
-    --lat-4-name "Slick" --lat-4 $(DATA)/vm_lat_iomgr_b32_*ns_c2_*b_rep*.log \
+    --lat-1-name "Insecure" --lat-1 $(DATA)/vm_lat_insecure_synthetic_b32_*ns_*b_c2_*b_rep*.log \
+    --lat-2-name "Secure" --lat-2 $(DATA)/multivm_lat_mirror_synthetic_b32_*ns_*b_c0_v2_*b_rep*.log \
+    --lat-3-name "Naive" --lat-3 $(DATA)/vm_lat_noiomgr_synthetic_b32_*ns_*b_c2_*b_rep*.log \
+    --lat-4-name "Slick" --lat-4 $(DATA)/vm_lat_iomgr_synthetic_b32_*ns_*b_c2_*b_rep*.log \
 
-# missing:
-#    --lat-2-name "Secure" --lat-2 $(DATA)/vm_lat_mirror_b32_*ns_c2_*b_rep*.log \
 
 #    --1-name "Optimal" --1 $(DATA)/userspace_mirror_b32_*ns_0b_c2_*b_rep*.log \
 
