@@ -59,7 +59,7 @@ system_map = {
         'ebpf-linuxvm': 'XDP',
         }
 
-YLABEL = 'Processing time [ms]'
+YLABEL = 'Processing time [ns]'
 XLABEL = 'System'
 
 def map_hue(df_hue, hue_map):
@@ -168,32 +168,32 @@ def main():
     # Data for each system and contributor (in nanoseconds)
 
     # VMs
-    rows.append(['VMs', 'VM exit', 50000000])
+    rows.append(['VMs', 'VM exit', 4000])
     rows.append(['VMs', 'De/encryption', 0])  # Not applicable for VMs
     rows.append(['VMs', 'Bounce buffer', 0])  # Not applicable for VMs
-    rows.append(['VMs', 'Memory copy', 40000000])
-    rows.append(['VMs', 'Other', 10000000])
+    rows.append(['VMs', 'Memory copy', 207])
+    rows.append(['VMs', 'Other', 220])
 
     # CVMs
-    rows.append(['CVMs', 'VM exit', 55000000])
-    rows.append(['CVMs', 'De/encryption', 35000000])
-    rows.append(['CVMs', 'Bounce buffer', 30000000])
-    rows.append(['CVMs', 'Memory copy', 45000000])
-    rows.append(['CVMs', 'Other', 15000000])
+    rows.append(['CVMs', 'VM exit', 4000])
+    rows.append(['CVMs', 'De/encryption', 623 ])
+    rows.append(['CVMs', 'Bounce buffer', 207])
+    rows.append(['CVMs', 'Memory copy', 207])
+    rows.append(['CVMs', 'Other', 220])
 
     # VMs \n(batched)
-    rows.append(['VMs (batched)', 'VM exit', 20000000])
+    rows.append(['VMs (batched)', 'VM exit', 4000 / 32])
     rows.append(['VMs (batched)', 'De/encryption', 0])  # Not applicable for VMs
     rows.append(['VMs (batched)', 'Bounce buffer', 0])  # Not applicable for VMs
-    rows.append(['VMs (batched)', 'Memory copy', 25000000])
-    rows.append(['VMs (batched)', 'Other', 5000000])
+    rows.append(['VMs (batched)', 'Memory copy', 207])
+    rows.append(['VMs (batched)', 'Other', 220 / 32])
 
     # CVMs \n(batched)
-    rows.append(['CVMs (batched)', 'VM exit', 25000000])
-    rows.append(['CVMs (batched)', 'De/encryption', 18000000])
-    rows.append(['CVMs (batched)', 'Bounce buffer', 15000000])
-    rows.append(['CVMs (batched)', 'Memory copy', 28000000])
-    rows.append(['CVMs (batched)', 'Other', 8000000])
+    rows.append(['CVMs (batched)', 'VM exit', 4000 / 32])
+    rows.append(['CVMs (batched)', 'De/encryption', 623 ])
+    rows.append(['CVMs (batched)', 'Bounce buffer', 207])
+    rows.append(['CVMs (batched)', 'Memory copy', 207])
+    rows.append(['CVMs (batched)', 'Other', 220 / 32])
 
     data = pd.DataFrame(rows, columns=['system', 'label', 'nsec'])
 
@@ -204,7 +204,7 @@ def main():
     data['restart_s'] = data['nsec']
     data = data[['system', 'Contributor', 'restart_s']]
     df = data.groupby(['system', 'Contributor'])['restart_s'].mean().reset_index()
-    df['restart_s'] = df['restart_s']/1000000
+    # df['restart_s'] = df['restart_s']/1000000
 
     # Set categorical order for systems
     df['system'] = pd.Categorical(df['system'], ['VMs', 'CVMs', 'VMs (batched)', 'CVMs (batched)'])
@@ -324,6 +324,7 @@ def main():
     # plt.ylim(0, 250)
     if not args.logarithmic:
         plt.ylim(bottom=0)
+    plt.ylim(top=2100)
     # for container in ax.containers:
     #     ax.bar_label(container, fmt='%.0f')
 
