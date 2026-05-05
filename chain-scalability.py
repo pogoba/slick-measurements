@@ -242,7 +242,9 @@ def main():
                 if os.path.exists(csv_path):
                     lat_df = pd.read_csv(csv_path)
                     # Use median to avoid pktgen outliers (see repl.py)
-                    arg_df["lat_us"] = lat_df["Latency"].quantile(0.5)
+                    # filter out outliers >1ms which only happen in the strawman design (improves the baseline)
+                    latencies = lat_df["Latency"][lat_df["Latency"] <= 1_000_000]
+                    arg_df["lat_us"] = latencies.quantile(0.5)
                     arg_df["lat_us"] = arg_df["lat_us"] / 1000  # convert from ns to us
                 elif "lat_us" not in arg_df.columns:
                     print(f"Warning: no latency data for {f.name}")
@@ -253,7 +255,7 @@ def main():
                 all_dfs += [ arg_df ]
 
     if all_dfs:
-        df = pd.concat(all_dfs)
+        df = pd.concat(all_dfs, ignore_index=True)
     else:
         df = pd.DataFrame(columns=['system', 'chaining', 'y_value', 'plot_type'])
 
@@ -270,43 +272,44 @@ def main():
         for pt, group in df.groupby("plot_type"):
             real_x_values[pt] = sorted(group["chaining"].unique())
 
-    # Create synthetic fallback data
-    for plot_type in ["throughput", "latency"]:
-        for system in systems:
-            if (system, plot_type) in existing_combos:
-                continue
-            x_values = real_x_values.get(plot_type, chains)
-            for ch in x_values:
+    # # Create synthetic fallback data
+    # for plot_type in ["throughput", "latency"]:
+    #     for system in systems:
+    #         if (system, plot_type) in existing_combos:
+    #             continue
+    #         x_values = real_x_values.get(plot_type, chains)
+    #         for ch in x_values:
 
-                value = 0
-                if ch == 1:
-                    value = 2
-                elif ch == 4:
-                    value = 1
-                elif ch == 16:
-                    value = 0.8
+    #             value = 0
+    #             if ch == 1:
+    #                 value = 2
+    #             elif ch == 4:
+    #                 value = 1
+    #             elif ch == 16:
+    #                 value = 0.8
 
-                if plot_type == "throughput" and system == "Wallet":
-                    value = 0.22 / ch
-                else:
-                    factor = 1
-                    if system == "Slick":
-                        factor = 1.5
-                    value *= factor
+    #             if plot_type == "throughput" and system == "Wallet":
+    #                 value = 0.22 / ch
+    #             else:
+    #                 factor = 1
+    #                 if system == "Slick":
+    #                     factor = 1.5
+    #                 value *= factor
 
-                if plot_type == "latency":
-                    if system == "Wallet":
-                        # dont show Wallet latency because it doesnt fit into the plot
-                        # value = ((1.0 / (0.22 * 1000 * 1000)) * 32) * ch # (((1s / pps) * batchsize) + workload) * CHAINING
-                        # value *= 1000 * 1000 # s -> us
-                        continue
-                    else:
-                        value = 3.5 - value
+    #             if plot_type == "latency":
+    #                 if system == "Wallet":
+    #                     # dont show Wallet latency because it doesnt fit into the plot
+    #                     # value = ((1.0 / (0.22 * 1000 * 1000)) * 32) * ch # (((1s / pps) * batchsize) + workload) * CHAINING
+    #                     # value *= 1000 * 1000 # s -> us
+    #                     continue
+    #                 else:
+    #                     value = 3.5 - value
 
-                rows += [[system, ch, value, plot_type]]
-
-    df = pd.concat([df, pd.DataFrame(rows, columns=columns)], ignore_index=True)
-    systems += [ s for s in df['system'].unique() if s not in systems ]
+    #             rows += [[system, ch, value, plot_type]]
+    #
+    #df = pd.concat([df, pd.DataFrame(rows, columns=columns)], ignore_index=True)
+    #systems += [ s for s in df['system'].unique() if s not in systems ]
+    systems = df['system'].unique()
 
 
 

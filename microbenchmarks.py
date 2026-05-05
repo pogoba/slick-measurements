@@ -265,7 +265,9 @@ def main():
                 if os.path.exists(csv_path):
                     lat_df = pd.read_csv(csv_path)
                     # Use median to avoid pktgen outliers (see repl.py)
-                    arg_df["lat_us"] = lat_df["Latency"].quantile(0.5)
+                    # filter out outliers >1ms which only happen in the strawman design (improves the baseline)
+                    latencies = lat_df["Latency"][lat_df["Latency"] <= 1_000_000]
+                    arg_df["lat_us"] = latencies.quantile(0.5)
                     arg_df["lat_us"] = arg_df["lat_us"] / 1000 # convert from ns to us
                 elif "lat_us" not in arg_df.columns:
                     print(f"Warning: no latency data for {f.name}")
@@ -295,7 +297,7 @@ def main():
                     all_dfs += [ arg_df ]
 
     if all_dfs:
-        df = pd.concat(all_dfs)
+        df = pd.concat(all_dfs, ignore_index=True)
     else:
         df = pd.DataFrame(columns=['system', 'workload', 'y_value', 'plot_type', 'metric_type'])
     # for s in df['chain'].unique():
@@ -330,47 +332,48 @@ def main():
         "memory": [0, 10, 50, 100, 500],
     }
 
-    # Create data for all 6 plots (3 metric types x 2 plot types)
-    for metric_type in ["time_64b", "time_1500b", "memory"]:
-        for plot_type in ["throughput", "latency"]:
-            if plot_type == "latency" and metric_type != "memory":
-                continue # skip adding stub data here
-            for system in systems:
-                if plot_type == "latency" and metric_type == "memory" and system == "Wallet":
-                    continue
-                # Use real x-values if available, otherwise defaults
-                if (plot_type, metric_type) in real_x_values:
-                    x_values = real_x_values[(plot_type, metric_type)]
-                elif metric_type.startswith("time"):
-                    x_values = default_x_values["time"]
-                else:
-                    x_values = default_x_values["memory"]
+    # # Create data for all 6 plots (3 metric types x 2 plot types)
+    # for metric_type in ["time_64b", "time_1500b", "memory"]:
+    #     for plot_type in ["throughput", "latency"]:
+    #         if plot_type == "latency" and metric_type != "memory":
+    #             continue # skip adding stub data here
+    #         for system in systems:
+    #             if plot_type == "latency" and metric_type == "memory" and system == "Wallet":
+    #                 continue
+    #             # Use real x-values if available, otherwise defaults
+    #             if (plot_type, metric_type) in real_x_values:
+    #                 x_values = real_x_values[(plot_type, metric_type)]
+    #             elif metric_type.startswith("time"):
+    #                 x_values = default_x_values["time"]
+    #             else:
+    #                 x_values = default_x_values["memory"]
 
-                for x_val in x_values:
-                    if plot_type == "latency":
-                        value = 0
-                    elif metric_type.startswith("time"):
-                        value = 2.5 - (x_val / 50)  # decreases with processing time
-                        if system == "Wallet":
-                            value = 0.22 # best-case microbenchmark without VNFlet workload
-                        elif metric_type == "time_1500b":
-                            value *= 0.6  # lower throughput for larger packets
-                    else:  # memory
-                        value = 2.2 - (x_val / 500) * 1.5  # decreases with memory access
-                        if system == "Wallet":
-                            value = 0.22
+    #             for x_val in x_values:
+    #                 if plot_type == "latency":
+    #                     value = 0
+    #                 elif metric_type.startswith("time"):
+    #                     value = 2.5 - (x_val / 50)  # decreases with processing time
+    #                     if system == "Wallet":
+    #                         value = 0.22 # best-case microbenchmark without VNFlet workload
+    #                     elif metric_type == "time_1500b":
+    #                         value *= 0.6  # lower throughput for larger packets
+    #                 else:  # memory
+    #                     value = 2.2 - (x_val / 500) * 1.5  # decreases with memory access
+    #                     if system == "Wallet":
+    #                         value = 0.22
 
-                    factor = 1
-                    if system == "Slick":
-                        factor = 1.5
+    #                 factor = 1
+    #                 if system == "Slick":
+    #                     factor = 1.5
 
-                    value *= factor
+    #                 value *= factor
 
-                    if (system, plot_type, metric_type) not in existing_combos:
-                        rows += [[system, x_val, value, plot_type, metric_type]]
+    #                 if (system, plot_type, metric_type) not in existing_combos:
+    #                     rows += [[system, x_val, value, plot_type, metric_type]]
 
-    df = pd.concat([df, pd.DataFrame(rows, columns=columns)])
-    systems += [ s for s in df['system'].unique() if s not in systems ] # add misc systems cause pyplot will later filter for these
+    # df = pd.concat([df, pd.DataFrame(rows, columns=columns)])
+    # systems += [ s for s in df['system'].unique() if s not in systems ] # add misc systems cause pyplot will later filter for these
+    systems = df['system'].unique()
 
     # Create a combined column for ordering: time_thr, time_lat, mem_fast_thr, mem_fast_lat, mem_slow_thr, mem_slow_lat
     df['plot_order'] = df['plot_type'] + '_' + df['metric_type']
@@ -407,7 +410,7 @@ def main():
             ax.set_xscale('log')
 
     # Set upper ylim for latency plots based on highest value, ignoring "Secure"
-    latency_df = df[(df["plot_type"] == "latency") & (df["system"] != "Secure")]
+    latency_df = df[(df["plot_type"] == "latency") & (df["system"] != "Strawman")]
     for i, po in enumerate(plot_order):
         if po.startswith("latency_"):
             facet_df = latency_df[latency_df["plot_order"] == po]

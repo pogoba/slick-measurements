@@ -204,24 +204,25 @@ def main():
     else:
         df = pd.DataFrame(columns=['size', 'vnf', 'msec'])
 
-    # Add synthetic Wallet baseline (same as microbenchmarks.py)
-    vnfs = ["Insecure", "Secure", "Wallet", "Naive", "Slick"]
-    sizes = sorted(df['size'].unique()) if not df.empty else ["64", "256", "1024", "1508"]
-    existing_vnfs = set(df['vnf'].unique()) if not df.empty else set()
-    wallet_rows = []
-    for size in sizes:
-        if "Wallet" not in existing_vnfs:
-            if size == "64":
-                wallet_rows.append([size, "Wallet", 0.188]) # nspp2mpps(mpps2nspp(0.22) + (770ns for chacha20-poly1305))
-            elif size == "1500":
-                wallet_rows.append([size, "Wallet", 0.152]) # nspp2mpps(mpps2nspp(0.22) + 2002ns for chacha20-poly1305)
-            else:
-                ipsec_time = lambda pktsize: 770 + ((2002-770)/(1500-64) * (pktsize - 64))
-                value = nspp2mpps(mpps2nspp(0.22) + ipsec_time(int(size)))
-                wallet_rows.append([size, "Wallet", value])
-    if wallet_rows:
-        df = pd.concat([df, pd.DataFrame(wallet_rows, columns=['size', 'vnf', 'msec'])], ignore_index=True)
-    vnfs += [v for v in df['vnf'].unique() if v not in vnfs]
+    # # Add synthetic Wallet baseline (same as microbenchmarks.py)
+    # vnfs = ["Insecure", "Secure", "Wallet", "Naive", "Slick"]
+    # sizes = sorted(df['size'].unique()) if not df.empty else ["64", "256", "1024", "1508"]
+    # existing_vnfs = set(df['vnf'].unique()) if not df.empty else set()
+    # wallet_rows = []
+    # for size in sizes:
+    #     if "Wallet" not in existing_vnfs:
+    #         if size == "64":
+    #             wallet_rows.append([size, "Wallet", 0.188]) # nspp2mpps(mpps2nspp(0.22) + (770ns for chacha20-poly1305))
+    #         elif size == "1500":
+    #             wallet_rows.append([size, "Wallet", 0.152]) # nspp2mpps(mpps2nspp(0.22) + 2002ns for chacha20-poly1305)
+    #         else:
+    #             ipsec_time = lambda pktsize: 770 + ((2002-770)/(1500-64) * (pktsize - 64))
+    #             value = nspp2mpps(mpps2nspp(0.22) + ipsec_time(int(size)))
+    #             wallet_rows.append([size, "Wallet", value])
+    # if wallet_rows:
+    #     df = pd.concat([df, pd.DataFrame(wallet_rows, columns=['size', 'vnf', 'msec'])], ignore_index=True)
+    # vnfs += [v for v in df['vnf'].unique() if v not in vnfs]
+    vnfs = df['vnf'].unique()
 
     # Ensure barplot ordering matches vnfs list
     hue_order = vnfs
