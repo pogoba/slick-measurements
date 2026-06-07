@@ -59,17 +59,11 @@ system_map = {
         'ebpf-linuxvm': 'XDP',
         }
 
-YLABEL = 'Comm. time [ns]'
+YLABEL = 'Comm. time [us]'
 XLABEL = ''
 
 # time spent in the VNFlet network stack (hardcoded for now)
 VNFLET_STACK_SHARE = 0.35
-
-system_label_map = {
-    'mirrorMicrobenchmark': 'Mirror',
-    'vnfletMicrobechmark': 'VNFlet',
-    'vnfletMicrobenchmark': 'VNFlet',
-}
 
 def map_hue(df_hue, hue_map):
     return df_hue.apply(lambda row: hue_map.get(str(row), row))
@@ -169,34 +163,40 @@ def main():
         plt.grid()
     # plt.xlim(0, 0.83)
     log_scale = (False, True) if args.logarithmic else False
-    # ax.set_yscale('log' if args.logarithmic else 'linear')
+    ax.set_yscale('log' if args.logarithmic else 'linear')
 
     log("Preparing plotting data")
 
-    # Read measurement logs from file arguments. The --N order and --N-name
-    # have no impact: bars are derived from the data itself
-    # (system, pktsize, batchsize).
+    # Read measurement logs from file arguments. The --N order has no impact;
+    # the system display name is taken from --N-name. Bars are derived from the
+    # display name plus the data (pktsize, batchsize).
     all_dfs = []
+    name_order = []
     for color in COLORS:
         if args.__dict__[color]:
             log(f"Reading files for --{color}")
-            all_dfs += [pd.read_csv(f.name) for f in args.__dict__[color]]
+            arg_df = pd.concat([pd.read_csv(f.name) for f in args.__dict__[color]], ignore_index=True)
+            name = args.__dict__[f'{color}_name']
+            arg_df['sysname'] = name
+            if name not in name_order:
+                name_order += [ name ]
+            all_dfs += [ arg_df ]
     raw_df = pd.concat(all_dfs, ignore_index=True)
     raw_df = raw_df[raw_df['Mpps'] > 0]
 
     # convert packet rate into communication time per packet (1/rate)
-    raw_df['nspp'] = 1000.0 / raw_df['Mpps'] # Mpps -> ns per packet
+    raw_df['nspp'] = 1.0 / raw_df['Mpps'] # Mpps -> ns per packet
 
-    # one bar per (system, pktsize, batchsize); each bar is stacked into
+    # one bar per (display name, pktsize, batchsize); each bar is stacked into
     # the VNFlet network stack share and the remainder
     Contributors = [ "VNFlet network stack", "Other" ]
     rows = []
     bar_order = []
-    grouped = raw_df.groupby(['system', 'pktsize', 'batchsize'])['nspp'].mean()
-    combos = sorted(grouped.index, key=lambda c: (system_label_map.get(c[0], c[0]), int(c[1]), int(c[2])))
-    for (system, pktsize, batchsize) in combos:
-        nspp = grouped[(system, pktsize, batchsize)]
-        bar = f"{system_label_map.get(system, system)}\n{pktsize}B\nb{batchsize}"
+    grouped = raw_df.groupby(['sysname', 'pktsize', 'batchsize'])['nspp'].mean()
+    combos = sorted(grouped.index, key=lambda c: (name_order.index(c[0]), int(c[1]), int(c[2])))
+    for (sysname, pktsize, batchsize) in combos:
+        nspp = grouped[(sysname, pktsize, batchsize)]
+        bar = f"{sysname}\n{pktsize}B\nb{batchsize}"
         bar_order += [ bar ]
         rows.append([bar, 'VNFlet network stack', nspp * VNFLET_STACK_SHARE])
         rows.append([bar, 'Other', nspp * (1 - VNFLET_STACK_SHARE)])
@@ -301,17 +301,16 @@ def main():
     # grid.set_xlabels(XLABEL)
     # grid.set_ylabels(YLABEL)
     #
-    if (args.slides):
-        ax.annotate(
-            "↓ Lower is better", # or ↓ ← ↑ →
-            xycoords="axes points",
-            # xy=(0, 0),
-            xy=(0, 0),
-            xytext=(-4, -28),
-            # fontsize=FONT_SIZE,
-            color="navy",
-            weight="bold",
-        )
+    ax.annotate(
+        "↓ Lower\nis better", # or ↓ ← ↑ →
+        xycoords="axes points",
+        # xy=(0, 0),
+        xy=(0, 0),
+        xytext=(-30, -28),
+        # fontsize=FONT_SIZE,
+        color="navy",
+        weight="bold",
+    )
 
     plt.xlabel(XLABEL)
     plt.ylabel(YLABEL)
