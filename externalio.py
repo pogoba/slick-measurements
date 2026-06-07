@@ -12,6 +12,7 @@ from os.path import basename, getsize, isfile
 from typing import List, Any
 from plotting import HATCHES as hatches
 from plotting import mybarplot
+from plotting import map_grid_titles
 from tqdm import tqdm
 import scipy.stats as scipyst
 from functools import reduce
@@ -155,17 +156,6 @@ def main():
     parser = setup_parser()
     args = parse_args(parser)
 
-    fig = plt.figure(figsize=(args.width, args.height))
-    # fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1)
-    # ax.set_axisbelow(True)
-    if args.title:
-        plt.title(args.title)
-    plt.grid()
-    # plt.xlim(0, 0.83)
-    log_scale = (False, True) if args.logarithmic else False
-    ax.set_yscale('log' if args.logarithmic else 'linear')
-
     # dfs = []
     # for color in COLORS:
     #     if args.__dict__[color]:
@@ -202,7 +192,7 @@ def main():
     if all_dfs:
         df = pd.concat(all_dfs, ignore_index=True)
     else:
-        df = pd.DataFrame(columns=['size', 'vnf', 'msec'])
+        df = pd.DataFrame(columns=['size', 'vnf', 'msec', 'real_workload'])
 
     # # Add synthetic Wallet baseline (same as microbenchmarks.py)
     # vnfs = ["Insecure", "Secure", "Wallet", "Naive", "Slick"]
@@ -240,34 +230,70 @@ def main():
     # Only removes outliers that are excessive (e.g. 1000ms from a median of 15ms).
     # We need this because our linux measurements sometimes break and don't detect when click is up.
     dfs = []
-    for size in df['size'].unique():
-        for hue in df['vnf'].unique():
-            raw = df[(df['size'] == size) & (df['vnf'] == hue)]
-            clean = raw[(raw['msec'] < (50*raw['msec'].median()))]
-            dfs += [ clean ]
+    for workload in df['real_workload'].unique():
+        for size in df['size'].unique():
+            for hue in df['vnf'].unique():
+                raw = df[(df['real_workload'] == workload) & (df['size'] == size) & (df['vnf'] == hue)]
+                clean = raw[(raw['msec'] < (50*raw['msec'].median()))]
+                dfs += [ clean ]
     df = pd.concat(dfs)
 
     df = df[df['vnf'] != 'filter']
 
     log("Plotting data")
 
-    # Plot using Seaborn
-    size_order = sorted(df['size'].unique(), key=lambda s: int(s))
-    sns.barplot(
-               data=df,
-               x='size',
-               y='msec',
-               order=size_order,
-               hue="vnf",
-               hue_order=hue_order,
-               # palette=palette,
-               palette="deep",
-               saturation=1,
-               edgecolor="dimgray",
-               )
+    # One facet row per workload type (upper: synthetic, lower: real)
+    grid_title_map = {
+        'real_workload = synthetic': 'No IPSec',
+        'real_workload = real': 'With IPSec',
+    }
+    workloads = [w for w in ['synthetic', 'real'] if w in df['real_workload'].unique()]
 
-    mybarplot.add_hatches(data=df, x='size', y='msec', hue='vnf', ax=ax, hatch_by='vnf', hatches=hatch_map)
-    mybarplot.add_colors(data=df, x='size', y='msec', hue='vnf', ax=ax, color_by='vnf', colors=color_map)
+    size_order = sorted(df['size'].unique(), key=lambda s: int(s))
+
+    # Create FacetGrid with one row per workload type
+    grid = sns.FacetGrid(df, row='real_workload', row_order=workloads,
+                         height=args.height / len(workloads),
+                         aspect=args.width / (args.height / len(workloads)),
+                         sharex=True, sharey=False)
+    if args.title:
+        grid.figure.suptitle(args.title)
+
+    for ax in grid.axes.flat:
+        ax.set_axisbelow(True)
+        ax.grid(True)
+        ax.set_yscale('log' if args.logarithmic else 'linear')
+
+    # Map barplot to each facet
+    grid.map_dataframe(sns.barplot,
+                       x='size',
+                       y='msec',
+                       order=size_order,
+                       hue="vnf",
+                       hue_order=hue_order,
+                       # palette=palette,
+                       palette="deep",
+                       saturation=1,
+                       edgecolor="dimgray",
+                       )
+
+    # materialize tick labels on all (shared) axes so that mybarplot can
+    # look up x categories via ax.get_xticklabels()
+    grid.figure.canvas.draw()
+
+    # apply custom hatches and colors per facet
+    for (row_i, col_j, hue_k), facet_df in grid.facet_data():
+        ax = grid.facet_axis(row_i, col_j)
+        mybarplot.add_hatches(data=facet_df, x='size', y='msec', hue='vnf', ax=ax, hatch_by='vnf', hatches=hatch_map)
+        mybarplot.add_colors(data=facet_df, x='size', y='msec', hue='vnf', ax=ax, color_by='vnf', colors=color_map)
+
+    for ax in grid.axes.flat:
+        if not args.logarithmic:
+            ax.set_ylim(bottom=0)
+        else:
+            ax.set_ylim(bottom=1)
+
+    map_grid_titles(grid, grid_title_map)
     # sns.add_legend(
     #         # bbox_to_anchor=(0.5, 0.77),
     #         loc='right',
@@ -323,13 +349,17 @@ def main():
     #             # log_scale=log_scale,
     #             ax=ax,
     #             )
+    # Add a single legend to the grid
+    grid.add_legend(title=None, frameon=False)
+
     # Fix the legend hatches
-    for i, legend_patch in enumerate(ax.get_legend().get_patches()):
-        vnf = hue_order[i]
+    legend = grid._legend
+    for legend_patch, legend_text in zip(legend.get_patches(), legend.get_texts()):
+        vnf = legend_text.get_text()
         legend_patch.set_hatch(f"{hatch_map[vnf]}{hatch_map[vnf]}")
         legend_patch.set_facecolor(color_map[vnf])
-    n_labels = len(ax.get_legend().get_texts())
-    sns.move_legend(ax, "upper center", bbox_to_anchor=(0.5, 1.05), ncol=n_labels, title=None, frameon=False, bbox_transform=fig.transFigure)
+    n_labels = len(legend.get_texts())
+    sns.move_legend(grid, "lower center", bbox_to_anchor=(0.5, 1.0), ncol=3, title=None, frameon=False)
     #
     # sns.move_legend(
     #     grid, "lower center",
@@ -341,7 +371,7 @@ def main():
     # grid.set_xlabels(XLABEL)
     # grid.set_ylabels(YLABEL)
     #
-    plt.annotate(
+    grid.axes.flat[-1].annotate(
         "↑ Higher is better", # or ↓ ← ↑ →
         xycoords="axes points",
         # xy=(0, 0),
@@ -352,14 +382,7 @@ def main():
         weight="bold",
     )
 
-    plt.xlabel(XLABEL)
-    plt.ylabel(YLABEL)
-
-    # plt.ylim(0, 350)
-    if not args.logarithmic:
-        plt.ylim(bottom=0)
-    else:
-        plt.ylim(bottom=1)
+    grid.set_axis_labels(XLABEL, YLABEL)
     # for container in ax.containers:
     #     ax.bar_label(container, fmt='%.0f')
 
@@ -382,10 +405,11 @@ def main():
     # legend.get_frame().set_alpha(0.8)
     # fig.tight_layout(rect = (0, 0, 0, 0.1))
     # ax.set_position((0.1, 0.1, 0.5, 0.8))
-    plt.tight_layout(pad=0.1)
-    plt.subplots_adjust(top=0.85, right=0.98)
+    grid.figure.set_size_inches(args.width, args.height)
+    grid.figure.tight_layout(pad=0.1)
+    grid.figure.subplots_adjust(hspace=0.4) # spacing between grid rows
     # fig.tight_layout(rect=(0, 0, 0.3, 1))
-    plt.savefig(args.output.name)
+    grid.savefig(args.output.name)
     plt.close()
 
 

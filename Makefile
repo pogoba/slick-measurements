@@ -80,12 +80,12 @@ microbenchmarks.pdf:
 externalio.pdf:
 	python3 $(PYARGS) externalio.py \
 		-o $(OUT_DIR)/externalio.pdf \
-		--width $(WIDTH2) --height 2 \
-    --1-name "DPDK (VM)" --1 $(DATA)/vm_mirrorUnconfidential_synthetic_b32_0ns_0b_c1_*b_rep*.log \
-    --2-name "Linux (CVM)" --2 $(DATA)/vm_mirrorKni_synthetic_b32_0ns_0b_c1_*b_rep*.log \
-    --3-name "Slick (CVM)" --3 $(DATA)/vm_iomgr_synthetic_b32_0ns_0b_c1_*b_rep*.log \
-    --4-name "Containers (CVM)" --4 $(DATA)/vm_containers_synthetic_b32_0ns_0b_c1_*b_rep*.log \
-    --5-name "Kata (VM)" --5 $(DATA)/vm_kata_synthetic_b32_0ns_0b_c1_*b_rep*.log \
+		--width $(WIDTH2) --height 3 \
+    --1-name "DPDK (VM)" --1 $(DATA)/vm_mirrorUnconfidential_*_b32_0ns_0b_c1_*b_rep*.log \
+    --2-name "Linux (CVM)" --2 $(DATA)/vm_mirrorKni_*_b32_0ns_0b_c1_*b_rep*.log \
+    --3-name "Slick (CVM)" --3 $(DATA)/vm_iomgr_*_b32_0ns_0b_c1_*b_rep*.log \
+    --4-name "Containers (CVM)" --4 $(DATA)/vm_containers_*_b32_0ns_0b_c1_*b_rep*.log \
+    --5-name "Kata (VM)" --5 $(DATA)/vm_kata_*_b32_0ns_0b_c1_*b_rep*.log \
 
     # --2-name "DPDK (CVM)" --2 $(DATA)/vm_mirror_synthetic_b32_0ns_0b_c1_*b_rep*.log \
 
