@@ -357,7 +357,7 @@ def main():
     if grid._legend:
         # sns.move_legend(grid, "center left", bbox_to_anchor=(1.02, 0.5), ncol=1, title=None, frameon=False)
         n_labels = len(grid._legend.get_texts())
-        sns.move_legend(grid, "upper center", bbox_to_anchor=(0.5, 1.08), ncol=n_labels, title=None, frameon=False)
+        sns.move_legend(grid, "upper center", bbox_to_anchor=(0.5, 1.08), ncol=3, title=None, frameon=False)
     # plot.add_legend(
     #         bbox_to_anchor=(0.55, 0.3),
     #         loc='upper left',
@@ -423,7 +423,7 @@ def main():
 
     # Adjust layout and save
     grid.figure.tight_layout(pad=0.1)
-    grid.figure.subplots_adjust(top=0.8)
+    grid.figure.subplots_adjust(top=0.7)
     grid.savefig(args.output.name)
     plt.close()
 

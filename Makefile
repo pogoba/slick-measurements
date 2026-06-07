@@ -41,18 +41,18 @@ app-throughput.pdf:
 chain-scalability.pdf:
 	python3 $(PYARGS) chain-scalability.py \
 		-o $(OUT_DIR)/chain-scalability.pdf \
-		--width $(WIDTH) --height 2 \
-    --1-name "Un-isolated" --1 $(DATA)/vm_insecure_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
-    --2-name "Strawman" --2 $(DATA)/multivm_mirror_synthetic_b32_0ns_0b_c0_v*_1500b_rep*.log \
-    --3-name "Naive" --3 $(DATA)/vm_noiomgr_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
-    --4-name "Slick" --4 $(DATA)/vm_iomgr_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
-    --5-name "Containers" --5 $(DATA)/vm_containers_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
-    --6-name "Kata" --6 $(DATA)/vm_kata_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
+		--width $(WIDTH) --height 2.3 \
+    --1-name "Containers" --1 $(DATA)/vm_containers_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
+    --2-name "Kata" --2 $(DATA)/vm_kata_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
+    --3-name "Un-isolated" --3 $(DATA)/vm_insecure_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
+    --4-name "Strawman" --4 $(DATA)/multivm_mirror_synthetic_b32_0ns_0b_c0_v*_1500b_rep*.log \
+    --5-name "Naive" --5 $(DATA)/vm_noiomgr_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
+    --6-name "Slick" --6 $(DATA)/vm_iomgr_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
     \
-    --lat-1-name "Un-isolated" --lat-1 $(DATA)/vm_lat_insecure_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
-    --lat-2-name "Strawman" --lat-2 $(DATA)/multivm_lat_mirror_synthetic_b32_0ns_0b_c0_v*_1500b_rep*.log \
-    --lat-3-name "Naive" --lat-3 $(DATA)/vm_lat_noiomgr_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
-    --lat-4-name "Slick" --lat-4 $(DATA)/vm_lat_iomgr_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
+    --lat-3-name "Un-isolated" --lat-3 $(DATA)/vm_lat_insecure_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
+    --lat-4-name "Strawman" --lat-4 $(DATA)/multivm_lat_mirror_synthetic_b32_0ns_0b_c0_v*_1500b_rep*.log \
+    --lat-5-name "Naive" --lat-5 $(DATA)/vm_lat_noiomgr_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
+    --lat-6-name "Slick" --lat-6 $(DATA)/vm_lat_iomgr_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
 
 
 microbenchmarks.pdf:
