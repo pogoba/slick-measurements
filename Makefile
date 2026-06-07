@@ -1,7 +1,7 @@
 .PHONY: repl
 
-OUT_DIR := ./pdfs/out21-output6v2
-DATA := ./data/out21-output6v2
+OUT_DIR := ./pdfs/out22-output6v2
+DATA := ./data/out22-output6v2
 ROOT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 PYARGS :=
 PAPER_FIGURES := app-throughput.pdf chain-scalability.pdf microbenchmarks.pdf packet-overhead.pdf
@@ -76,6 +76,18 @@ microbenchmarks.pdf:
 
 #  	--1-name "Slick" --1 ./data/out1/userspace_iomgr_b32_*ns_c1_64b_rep*.log \
 #  	--2-name "Naive" --2 ./data/out1/userspace_noiomgr_b32_*ns_c1_64b_rep*.log
+
+externalio.pdf:
+	python3 $(PYARGS) externalio.py \
+		-o $(OUT_DIR)/externalio.pdf \
+		--width $(WIDTH2) --height 2 \
+    --1-name "DPDK (VM)" --1 $(DATA)/vm_mirrorUnconfidential_synthetic_b32_0ns_0b_c1_*b_rep*.log \
+    --2-name "Linux (CVM)" --2 $(DATA)/vm_mirrorKni_synthetic_b32_0ns_0b_c1_*b_rep*.log \
+    --3-name "Slick (CVM)" --3 $(DATA)/vm_iomgr_synthetic_b32_0ns_0b_c1_*b_rep*.log \
+    --4-name "Containers (CVM)" --4 $(DATA)/vm_containers_synthetic_b32_0ns_0b_c1_*b_rep*.log \
+    --5-name "Kata (VM)" --5 $(DATA)/vm_kata_synthetic_b32_0ns_0b_c1_*b_rep*.log \
+
+    # --2-name "DPDK (CVM)" --2 $(DATA)/vm_mirror_synthetic_b32_0ns_0b_c1_*b_rep*.log \
 
 packet-overhead.pdf:
 	python3 $(PYARGS) packet-overhead.py \
