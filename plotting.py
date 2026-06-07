@@ -26,7 +26,12 @@ class mybarplot():
         """
         x_coord = rect.get_bbox().x0 + rect.get_bbox().width / 2
         x_category_id = round(x_coord) # x axis is not numerical
-        x_category_value = ax.get_xticklabels()[x_category_id].get_text()
+        labels = [label.get_text() for label in ax.get_xticklabels()]
+        if not labels:
+            # axes sharing their x axis (e.g. FacetGrid rows) may not have
+            # materialized tick label Texts; ask the (shared) formatter instead
+            labels = ax.xaxis.get_major_formatter().format_ticks(ax.get_xticks())
+        x_category_value = labels[x_category_id]
         return x_category_value
 
 
@@ -122,6 +127,8 @@ class mybarplot():
 
         for bar, bars_data, bars_y in mybarplot.all_bars(data, x, y, hue, ax):
             color_by_value = bars_data[color_by].unique()
+            if len(color_by_value) == 0:
+                continue # bar without data (e.g. hue missing for this x category)
             if len(color_by_value) != 1:
                 raise Exception(f"Color by {color_by} is ambiguous.")
             color_by_value = color_by_value[0]
@@ -140,6 +147,8 @@ class mybarplot():
 
         for bar, bars_data, bars_y in mybarplot.all_bars(data, x, y, hue, ax):
             hatch_by_value = bars_data[hatch_by].unique()
+            if len(hatch_by_value) == 0:
+                continue # bar without data (e.g. hue missing for this x category)
             if len(hatch_by_value) != 1:
                 raise Exception(f"Hatch by {hatch_by} is ambiguous.")
             hatch_by_value = hatch_by_value[0]
