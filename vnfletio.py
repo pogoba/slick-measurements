@@ -59,8 +59,17 @@ system_map = {
         'ebpf-linuxvm': 'XDP',
         }
 
-YLABEL = 'Processing time [ns]'
-XLABEL = 'System'
+YLABEL = 'Comm. time [ns]'
+XLABEL = ''
+
+# time spent in the VNFlet network stack (hardcoded for now)
+VNFLET_STACK_SHARE = 0.35
+
+system_label_map = {
+    'mirrorMicrobenchmark': 'Mirror',
+    'vnfletMicrobechmark': 'VNFlet',
+    'vnfletMicrobenchmark': 'VNFlet',
+}
 
 def map_hue(df_hue, hue_map):
     return df_hue.apply(lambda row: hue_map.get(str(row), row))
@@ -162,61 +171,47 @@ def main():
     log_scale = (False, True) if args.logarithmic else False
     # ax.set_yscale('log' if args.logarithmic else 'linear')
 
-    log("Using hardcoded data")
-    # Hardcoded data to replace parse_data(df) and CSV reading
-    rows = []
-    # Data for each system and contributor (in nanoseconds)
-
-    # VMs
-    rows.append(['VMs', 'VM exit', 4000])
-    rows.append(['VMs', 'De/encryption', 0])  # Not applicable for VMs
-    rows.append(['VMs', 'Bounce buffer', 0])  # Not applicable for VMs
-    rows.append(['VMs', 'Memory copy', 207])
-    rows.append(['VMs', 'Other', 220])
-
-    # CVMs
-    rows.append(['CVMs', 'VM exit', 4000])
-    rows.append(['CVMs', 'De/encryption', 623 ])
-    rows.append(['CVMs', 'Bounce buffer', 207])
-    rows.append(['CVMs', 'Memory copy', 207])
-    rows.append(['CVMs', 'Other', 220])
-
-    # VMs \n(batched)
-    rows.append(['VMs (batched)', 'VM exit', 4000 / 32])
-    rows.append(['VMs (batched)', 'De/encryption', 0])  # Not applicable for VMs
-    rows.append(['VMs (batched)', 'Bounce buffer', 0])  # Not applicable for VMs
-    rows.append(['VMs (batched)', 'Memory copy', 207])
-    rows.append(['VMs (batched)', 'Other', 220 / 32])
-
-    # CVMs \n(batched)
-    rows.append(['CVMs (batched)', 'VM exit', 4000 / 32])
-    rows.append(['CVMs (batched)', 'De/encryption', 623 ])
-    rows.append(['CVMs (batched)', 'Bounce buffer', 207])
-    rows.append(['CVMs (batched)', 'Memory copy', 207])
-    rows.append(['CVMs (batched)', 'Other', 220 / 32])
-
-    data = pd.DataFrame(rows, columns=['system', 'label', 'nsec'])
-
     log("Preparing plotting data")
-    Contributors = [ "VM exit", "De/encryption", "Bounce buffer", "Memory copy", "Other" ]
-    data = data[data['label'].isin(Contributors)]
-    data['Contributor'] = data['label']
-    data['restart_s'] = data['nsec']
-    data = data[['system', 'Contributor', 'restart_s']]
-    df = data.groupby(['system', 'Contributor'])['restart_s'].mean().reset_index()
-    # df['restart_s'] = df['restart_s']/1000000
 
-    # Set categorical order for systems
-    df['system'] = pd.Categorical(df['system'], ['VMs', 'CVMs', 'VMs (batched)', 'CVMs (batched)'])
-    # Rename VMs to vms
-    df['system'] = df['system'].cat.rename_categories({'VMs (batched)': 'VMs\n(batched) ', 'CVMs (batched)': 'CVMs\n (batched)'})
+    # Read measurement logs from file arguments. The --N order and --N-name
+    # have no impact: bars are derived from the data itself
+    # (system, pktsize, batchsize).
+    all_dfs = []
+    for color in COLORS:
+        if args.__dict__[color]:
+            log(f"Reading files for --{color}")
+            all_dfs += [pd.read_csv(f.name) for f in args.__dict__[color]]
+    raw_df = pd.concat(all_dfs, ignore_index=True)
+    raw_df = raw_df[raw_df['Mpps'] > 0]
+
+    # convert packet rate into communication time per packet (1/rate)
+    raw_df['nspp'] = 1000.0 / raw_df['Mpps'] # Mpps -> ns per packet
+
+    # one bar per (system, pktsize, batchsize); each bar is stacked into
+    # the VNFlet network stack share and the remainder
+    Contributors = [ "VNFlet network stack", "Other" ]
+    rows = []
+    bar_order = []
+    grouped = raw_df.groupby(['system', 'pktsize', 'batchsize'])['nspp'].mean()
+    combos = sorted(grouped.index, key=lambda c: (system_label_map.get(c[0], c[0]), int(c[1]), int(c[2])))
+    for (system, pktsize, batchsize) in combos:
+        nspp = grouped[(system, pktsize, batchsize)]
+        bar = f"{system_label_map.get(system, system)}\n{pktsize}B\nb{batchsize}"
+        bar_order += [ bar ]
+        rows.append([bar, 'VNFlet network stack', nspp * VNFLET_STACK_SHARE])
+        rows.append([bar, 'Other', nspp * (1 - VNFLET_STACK_SHARE)])
+
+    df = pd.DataFrame(rows, columns=['system', 'Contributor', 'restart_s'])
+
+    # Set categorical order for bars
+    df['system'] = pd.Categorical(df['system'], bar_order)
     # Plot using Seaborn
     sns.histplot(
                data=df,
                x='system',
                weights='restart_s',
                hue="Contributor",
-               hue_order = ['VM exit', 'De/encryption', 'Bounce buffer', 'Memory copy', 'Other'],
+               hue_order = Contributors,
                multiple="stack",
                # palette=palette,
                palette="deep",
@@ -324,7 +319,6 @@ def main():
     # plt.ylim(0, 250)
     if not args.logarithmic:
         plt.ylim(bottom=0)
-    plt.ylim(top=2100)
     # for container in ax.containers:
     #     ax.bar_label(container, fmt='%.0f')
 
@@ -348,7 +342,7 @@ def main():
     # fig.tight_layout(rect = (0, 0, 0, 0.1))
     # ax.set_position((0.1, 0.1, 0.5, 0.8))
     plt.tight_layout(pad=0.1)
-    plt.subplots_adjust(top=0.7)
+    plt.subplots_adjust(top=0.85)
     plt.savefig(args.output.name)
     plt.close()
 

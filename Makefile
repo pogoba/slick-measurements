@@ -89,6 +89,19 @@ externalio.pdf:
 
     # --2-name "DPDK (CVM)" --2 $(DATA)/vm_mirror_synthetic_b32_0ns_0b_c1_*b_rep*.log \
 
+
+vnfletio.pdf:
+	python3 $(PYARGS) vnfletio.py \
+		-o $(OUT_DIR)/vnfletio.pdf \
+		--width $(WIDTH2) --height 2 \
+    --1 $(DATA)/vm_mirrorMicrobenchmark_*_b*_0ns_0b_c1_64b_rep*.log \
+    --2 $(DATA)/vm_mirrorMicrobenchmark_*_b*_0ns_0b_c1_1500b_rep*.log \
+    --3 $(DATA)/vm_mirrorKniMicrobenchmark_*_b*_0ns_0b_c1_64b_rep*.log \
+    --4 $(DATA)/vm_mirrorKniMicrobenchmark_*_b*_0ns_0b_c1_1500b_rep*.log \
+    --5 $(DATA)/vm_iomgrMicrobenchmark_*_b*_0ns_0b_c1_64b_rep*.log \
+    --6 $(DATA)/vm_iomgrMicrobenchmark_*_b*_0ns_0b_c1_1500b_rep*.log \
+
+
 packet-overhead.pdf:
 	python3 $(PYARGS) packet-overhead.py \
 		-o $(OUT_DIR)/packet-overhead.pdf \
