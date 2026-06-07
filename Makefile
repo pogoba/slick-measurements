@@ -93,14 +93,14 @@ externalio.pdf:
 vnfletio.pdf:
 	python3 $(PYARGS) vnfletio.py \
 		-o $(OUT_DIR)/vnfletio.pdf \
-		--width $(WIDTH2) --height 2 -l \
+		--width $(WIDTH2) --height 2 \
     --1-name "DPDK" --1 $(DATA)/vm_mirrorMicrobenchmark_*_b*_0ns_0b_c1_64b_rep*.log \
     --2-name "DPDK" --2 $(DATA)/vm_mirrorMicrobenchmark_*_b*_0ns_0b_c1_1500b_rep*.log \
-    --3-name "Linux" --3 $(DATA)/vm_mirrorKniMicrobenchmark_*_b*_0ns_0b_c1_64b_rep*.log \
-    --4-name "Linux" --4 $(DATA)/vm_mirrorKniMicrobenchmark_*_b*_0ns_0b_c1_1500b_rep*.log \
     --5-name "Slick" --5 $(DATA)/vm_iomgrMicrobenchmark_*_b*_0ns_0b_c1_64b_rep*.log \
     --6-name "Slick" --6 $(DATA)/vm_iomgrMicrobenchmark_*_b*_0ns_0b_c1_1500b_rep*.log \
-
+		-l \
+    --3-name "Linux" --3 $(DATA)/vm_mirrorKniMicrobenchmark_*_b*_0ns_0b_c1_64b_rep*.log \
+    --4-name "Linux" --4 $(DATA)/vm_mirrorKniMicrobenchmark_*_b*_0ns_0b_c1_1500b_rep*.log \
 
 packet-overhead.pdf:
 	python3 $(PYARGS) packet-overhead.py \

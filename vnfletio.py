@@ -63,7 +63,10 @@ YLABEL = 'Comm. time [us]'
 XLABEL = ''
 
 # time spent in the VNFlet network stack (hardcoded for now)
-VNFLET_STACK_SHARE = 0.35
+VNFLET_STACK_SHARE = 0.3
+# extra stub driver share, only added to mirrorMicrobenchmark bars (hardcoded for now)
+STUB_DRIVER_SHARE = 0.5
+STUB_DRIVER_SYSTEM = 'mirrorMicrobenchmark'
 
 def map_hue(df_hue, hue_map):
     return df_hue.apply(lambda row: hue_map.get(str(row), row))
@@ -188,18 +191,33 @@ def main():
     raw_df['nspp'] = 1.0 / raw_df['Mpps'] # Mpps -> ns per packet
 
     # one bar per (display name, pktsize, batchsize); each bar is stacked into
-    # the VNFlet network stack share and the remainder
-    Contributors = [ "VNFlet network stack", "Other" ]
+    # the VNFlet network stack share and the remainder. mirrorMicrobenchmark
+    # bars get an additional stub driver segment on top.
+    Contributors = [ "Stub driver", "VNFlet network stack", "Other" ]
     rows = []
     bar_order = []
-    grouped = raw_df.groupby(['sysname', 'pktsize', 'batchsize'])['nspp'].mean()
-    combos = sorted(grouped.index, key=lambda c: (name_order.index(c[0]), int(c[1]), int(c[2])))
-    for (sysname, pktsize, batchsize) in combos:
-        nspp = grouped[(sysname, pktsize, batchsize)]
+    grouped = raw_df.groupby(['sysname', 'pktsize', 'batchsize'])
+    nspp_mean = grouped['nspp'].mean()
+    systems = grouped['system'].agg(lambda s: set(s))
+    combos = sorted(nspp_mean.index, key=lambda c: (name_order.index(c[0]), int(c[1]), int(c[2])))
+    for combo in combos:
+        sysname, pktsize, batchsize = combo
+        nspp = nspp_mean[combo]
         bar = f"{sysname}\n{pktsize}B\nb{batchsize}"
         bar_order += [ bar ]
-        rows.append([bar, 'VNFlet network stack', nspp * VNFLET_STACK_SHARE])
-        rows.append([bar, 'Other', nspp * (1 - VNFLET_STACK_SHARE)])
+        # carve named segments out of the measured time; "Other" is the remainder
+        # so that the stacked bar height stays the measured communication time.
+        other = nspp
+        # vnflet = nspp * VNFLET_STACK_SHARE
+        vnflet = VNFLET_STACK_SHARE
+        other -= vnflet
+        rows.append([bar, 'VNFlet network stack', vnflet])
+        if STUB_DRIVER_SYSTEM in systems[combo]:
+            stub = nspp * STUB_DRIVER_SHARE
+            # stub = STUB_DRIVER_SHARE
+            other -= stub
+            rows.append([bar, 'Stub driver', stub])
+        rows.append([bar, 'Other', other])
 
     df = pd.DataFrame(rows, columns=['system', 'Contributor', 'restart_s'])
 
@@ -276,7 +294,7 @@ def main():
     #             )
     sns.move_legend(
         ax, "lower center",
-        bbox_to_anchor=(.5, 1.02), ncol=2, title=None, frameon=False,
+        bbox_to_anchor=(.5, 1.02), ncol=3, title=None, frameon=False,
     )
 
     color_hatch_map = dict()
