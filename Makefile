@@ -30,12 +30,14 @@ app-throughput.pdf:
 	python3 $(PYARGS) app-throughput.py \
 		-o $(OUT_DIR)/app-throughput.pdf \
 		--width $(WIDTH2) --height 2 \
-    --1-name "Un-isolated" --1 $(DATA)/vm_insecure_real_b32_0ns_0b_c3_*b_rep*.log \
-    --2-name "Strawman" --2 $(DATA)/multivm_mirror_real_b32_0ns_0b_c0_v3_*b_rep*.log \
-    --3-name "Naive" --3 $(DATA)/vm_noiomgr_real_b32_0ns_0b_c3_*b_rep*.log \
-    --4-name "Slick" --4 $(DATA)/vm_iomgr_real_b32_0ns_0b_c3_*b_rep*.log \
-    --5-name "Containers" --5 $(DATA)/vm_containers_real_b32_0ns_0b_c3_*b_rep*.log \
-    --6-name "Kata" --6 $(DATA)/vm_kata_real_b32_0ns_0b_c3_*b_rep*.log \
+    --1-name "Strawman" --1 $(DATA)/multivm_mirror_real_b32_0ns_0b_c0_v3_*b_rep*.log \
+    --2-name "Slick" --2 $(DATA)/vm_iomgr_real_b32_0ns_0b_c3_*b_rep*.log \
+    --3-name "Containers" --3 $(DATA)/vm_containers_real_b32_0ns_0b_c3_*b_rep*.log \
+    --4-name "Kata" --4 $(DATA)/vm_kata_real_b32_0ns_0b_c3_*b_rep*.log \
+
+    # --1-name "Un-isolated" --1 $(DATA)/vm_insecure_real_b32_0ns_0b_c3_*b_rep*.log \
+    # --3-name "Naive" --3 $(DATA)/vm_noiomgr_real_b32_0ns_0b_c3_*b_rep*.log \
+
 
 # works with ./data/out12-output4
 chain-scalability.pdf:
