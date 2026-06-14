@@ -162,9 +162,25 @@ def main():
     log_scale = (False, True) if args.logarithmic else False
     # ax.set_yscale('log' if args.logarithmic else 'linear')
 
-    log("Using hardcoded data")
-    variants = ["VM", "swiotlb", "vhost", "vhost-swiotlb", "snp", "snp-vhost", "snp-hpoll", "snp-vhost-hpoll", "snp-vhost-user", "Slick-vhost-user"]
-    gbps =     [3.4,        2.5,     3.6,             2.6,  0.59,        0.56,        3.05,              2.97,             38.9,              37.7 ]
+    variants = []
+    gbps = []
+    for color in COLORS:
+        files = args.__dict__.get(color)
+        if not files:
+            continue
+        name = args.__dict__[f"{color}_name"]
+        measurements = pd.concat(
+            [pd.read_csv(fh.name) for fh in files if getsize(fh.name) > 0]
+        )
+        variants.append(name)
+        gbps.append(measurements["GBit/s"].mean())
+
+    if not variants:
+        log("Using hardcoded data")
+        variants = ["VM", "swiotlb", "vhost", "vhost-swiotlb", "snp", "snp-vhost", "snp-hpoll", "snp-vhost-hpoll", "snp-vhost-user", "Slick-vhost-user"]
+        gbps =     [3.4,        2.5,     3.6,             2.6,  0.59,        0.56,        3.05,              2.97,             38.9,              37.7 ]
+    else:
+        log("Using measured data from arguments")
 
     df = pd.DataFrame({"system": variants, "Gbps": gbps})
     df['system'] = pd.Categorical(df['system'], categories=variants, ordered=True)

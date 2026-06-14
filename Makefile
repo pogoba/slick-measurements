@@ -119,7 +119,16 @@ network-performance.pdf:
 	python3 $(PYARGS) network-performance.py \
 		-o $(OUT_DIR)/network-performance.pdf \
 		--width $(TWIDTH) --height 2.5 \
-		--1 ./flake.nix
+		--1-name "VM" --1 $(DATA)/iperf_haltpoll_forward_rep*.log \
+		--2-name "swiotlb" --2 $(DATA)/iperf_swiotlb_forward_rep*.log \
+		--3-name "vhost" --3 $(DATA)/iperf_vhost_forward_rep*.log \
+		--4-name "snp" --4 $(DATA)/iperf_snp_forward_rep*.log \
+		--5-name "snp-vhost" --5 $(DATA)/iperf_snp_vhost_forward_rep*.log \
+		--6-name "snp-ipoll" --6 $(DATA)/iperf_poll_forward_rep*.log \
+		--7-name "snp-vhost-ipoll" --7 $(DATA)/iperf_poll_vhost_forward_rep*.log \
+		--8-name "snp-hpoll" --8 $(DATA)/iperf_haltpoll_forward_rep*.log \
+		--9-name "vhost-user" --9 $(DATA)/iperf_vhost_user_forward_rep*.log \
+
 
 message-size.pdf:
 	python3 $(PYARGS) message-size.py \
