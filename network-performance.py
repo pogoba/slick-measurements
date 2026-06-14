@@ -163,7 +163,7 @@ def main():
     # ax.set_yscale('log' if args.logarithmic else 'linear')
 
     variants = []
-    gbps = []
+    frames = []
     for color in COLORS:
         files = args.__dict__.get(color)
         if not files:
@@ -172,34 +172,47 @@ def main():
         measurements = pd.concat(
             [pd.read_csv(fh.name) for fh in files if getsize(fh.name) > 0]
         )
+        # keep individual repetitions so seaborn can draw error bars
+        frames.append(pd.DataFrame({"system": name, "Gbps": measurements["GBit/s"].values}))
         variants.append(name)
-        gbps.append(measurements["GBit/s"].mean())
 
     if not variants:
         log("Using hardcoded data")
         variants = ["VM", "swiotlb", "vhost", "vhost-swiotlb", "snp", "snp-vhost", "snp-hpoll", "snp-vhost-hpoll", "snp-vhost-user", "Slick-vhost-user"]
         gbps =     [3.4,        2.5,     3.6,             2.6,  0.59,        0.56,        3.05,              2.97,             38.9,              37.7 ]
+        df = pd.DataFrame({"system": variants, "Gbps": gbps})
     else:
         log("Using measured data from arguments")
+        df = pd.concat(frames, ignore_index=True)
 
-    df = pd.DataFrame({"system": variants, "Gbps": gbps})
     df['system'] = pd.Categorical(df['system'], categories=variants, ordered=True)
 
     log("Preparing plotting data")
     ax.set_axisbelow(True)
-    # Plot using Seaborn
+
+    # color selection mirrors app-throughput.py: pastel palette with the last
+    # (highlighted) system in sandybrown
+    colors = sns.color_palette("pastel", len(variants) - 1) + [mcolors.to_rgb('sandybrown')]
+
+    # Plot using Seaborn. Passing the raw per-repetition rows lets seaborn
+    # compute and draw the error bars (default 95% CI).
     sns.barplot(
                data=df,
                x='system',
                y='Gbps',
-               palette="deep",
+               order=variants,
+               hue='system',
+               hue_order=variants,
+               palette=colors,
+               legend=False,
+               saturation=1,
                edgecolor="dimgray",
                ax=ax,
                )
     for i, bar in enumerate(ax.patches):
         bar.set_hatch(hatches[i % len(hatches)])
     for container in ax.containers:
-        ax.bar_label(container, fmt='%.2f')
+        ax.bar_label(container, fmt='%.1f', padding=5)
 
     # sns.add_legend(
     #         # bbox_to_anchor=(0.5, 0.77),
