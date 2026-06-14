@@ -409,7 +409,7 @@ def main():
         color="navy",
         weight="bold",
     )
-    grid.axes.flat[1].set_ylim(top=400)
+    # grid.axes.flat[1].set_ylim(top=400)
 
     # Set axis labels (different y-axis for each subplot)
     for i, ax in enumerate(grid.axes.flat):

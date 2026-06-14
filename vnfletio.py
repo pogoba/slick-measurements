@@ -203,7 +203,7 @@ def main():
     for combo in combos:
         sysname, pktsize, batchsize = combo
         nspp = nspp_mean[combo]
-        bar = f"{sysname}\n{pktsize}B\nb{batchsize}"
+        bar = f"{sysname}\n{pktsize}B" # \nb{batchsize}"
         bar_order += [ bar ]
         # carve named segments out of the measured time; "Other" is the remainder
         # so that the stacked bar height stays the measured communication time.

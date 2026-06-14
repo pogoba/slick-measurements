@@ -1,7 +1,7 @@
 .PHONY: repl
 
-OUT_DIR := ./pdfs/out22-output6v2
-DATA := ./data/out22-output6v2
+OUT_DIR := ./pdfs/out23-output6v2
+DATA := ./data/out23-output6v2
 ROOT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 PYARGS :=
 PAPER_FIGURES := app-throughput.pdf chain-scalability.pdf microbenchmarks.pdf packet-overhead.pdf
@@ -30,10 +30,10 @@ app-throughput.pdf:
 	python3 $(PYARGS) app-throughput.py \
 		-o $(OUT_DIR)/app-throughput.pdf \
 		--width $(WIDTH2) --height 2 \
-    --1-name "Strawman" --1 $(DATA)/multivm_mirror_real_b32_0ns_0b_c0_v3_*b_rep*.log \
-    --2-name "Slick" --2 $(DATA)/vm_iomgr_real_b32_0ns_0b_c3_*b_rep*.log \
-    --3-name "Containers" --3 $(DATA)/vm_containers_real_b32_0ns_0b_c3_*b_rep*.log \
-    --4-name "Kata" --4 $(DATA)/vm_kata_real_b32_0ns_0b_c3_*b_rep*.log \
+    --1-name "Containers" --1 $(DATA)/vm_containers_real_b32_0ns_0b_c3_*b_rep*.log \
+    --2-name "Kata" --2 $(DATA)/vm_kata_real_b32_0ns_0b_c3_*b_rep*.log \
+    --3-name "Strawman" --3 $(DATA)/multivm_mirror_real_b32_0ns_0b_c0_v3_*b_rep*.log \
+    --4-name "Slick" --4 $(DATA)/vm_iomgr_real_b32_0ns_0b_c3_*b_rep*.log \
 
     # --1-name "Un-isolated" --1 $(DATA)/vm_insecure_real_b32_0ns_0b_c3_*b_rep*.log \
     # --3-name "Naive" --3 $(DATA)/vm_noiomgr_real_b32_0ns_0b_c3_*b_rep*.log \
@@ -51,6 +51,8 @@ chain-scalability.pdf:
     --5-name "Naive" --5 $(DATA)/vm_noiomgr_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
     --6-name "Slick" --6 $(DATA)/vm_iomgr_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
     \
+    --lat-1-name "Containers" --lat-1 $(DATA)/vm_lat_containers_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
+    --lat-2-name "Kata" --lat-2 $(DATA)/vm_lat_kata_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
     --lat-3-name "Un-isolated" --lat-3 $(DATA)/vm_lat_insecure_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
     --lat-4-name "Strawman" --lat-4 $(DATA)/multivm_lat_mirror_synthetic_b32_0ns_0b_c0_v*_1500b_rep*.log \
     --lat-5-name "Naive" --lat-5 $(DATA)/vm_lat_noiomgr_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
@@ -61,18 +63,21 @@ microbenchmarks.pdf:
 	python3 $(PYARGS) microbenchmarks.py \
 		-o $(OUT_DIR)/microbenchmarks.pdf \
 		--width $(WIDTH) --height 4.3 \
-    --1-name "Un-isolated" --1 $(DATA)/vm_insecure_synthetic_b32_*ns_*b_c2_*b_rep*.log \
-    --2-name "Strawman" --2 $(DATA)/multivm_mirror_synthetic_b32_*ns_*b_c0_v2_*b_rep*.log \
-    --3-name "Naive" --3 $(DATA)/vm_noiomgr_synthetic_b32_*ns_*b_c2_*b_rep*.log \
+    --1-name "Containers" --1 $(DATA)/vm_containers_synthetic_b32_*ns_*b_c2_*b_rep*.log \
+    --2-name "Kata" --2 $(DATA)/vm_kata_synthetic_b32_*ns_*b_c2_*b_rep*.log \
+    --3-name "Strawman" --3 $(DATA)/multivm_mirror_synthetic_b32_*ns_*b_c0_v2_*b_rep*.log \
     --4-name "Slick" --4 $(DATA)/vm_iomgr_synthetic_b32_*ns_*b_c2_*b_rep*.log \
-    --5-name "Containers" --5 $(DATA)/vm_containers_synthetic_b32_*ns_*b_c2_*b_rep*.log \
-    --6-name "Kata" --6 $(DATA)/vm_kata_synthetic_b32_*ns_*b_c2_*b_rep*.log \
     \
-    --lat-1-name "Un-isolated" --lat-1 $(DATA)/vm_lat_insecure_synthetic_b32_*ns_*b_c2_*b_rep*.log \
-    --lat-2-name "Strawman" --lat-2 $(DATA)/multivm_lat_mirror_synthetic_b32_*ns_*b_c0_v2_*b_rep*.log \
-    --lat-3-name "Naive" --lat-3 $(DATA)/vm_lat_noiomgr_synthetic_b32_*ns_*b_c2_*b_rep*.log \
+    --lat-2-name "Kata" --lat-2 $(DATA)/vm_lat_kata_synthetic_b32_*ns_*b_c2_*b_rep*.log \
+    --lat-3-name "Strawman" --lat-3 $(DATA)/multivm_lat_mirror_synthetic_b32_*ns_*b_c0_v2_*b_rep*.log \
     --lat-4-name "Slick" --lat-4 $(DATA)/vm_lat_iomgr_synthetic_b32_*ns_*b_c2_*b_rep*.log \
 
+    # --lat-1-name "Containers" --lat-1 $(DATA)/vm_lat_containers_synthetic_b32_*ns_*b_c2_*b_rep*.log \
+
+    # --3-name "Naive" --3 $(DATA)/vm_noiomgr_synthetic_b32_*ns_*b_c2_*b_rep*.log \
+    # --1-name "Un-isolated" --1 $(DATA)/vm_insecure_synthetic_b32_*ns_*b_c2_*b_rep*.log \
+    # --lat-1-name "Un-isolated" --lat-1 $(DATA)/vm_lat_insecure_synthetic_b32_*ns_*b_c2_*b_rep*.log \
+    # --lat-3-name "Naive" --lat-3 $(DATA)/vm_lat_noiomgr_synthetic_b32_*ns_*b_c2_*b_rep*.log \
 
 #    --1-name "Optimal" --1 $(DATA)/userspace_mirror_b32_*ns_0b_c2_*b_rep*.log \
 
@@ -83,11 +88,11 @@ externalio.pdf:
 	python3 $(PYARGS) externalio.py \
 		-o $(OUT_DIR)/externalio.pdf \
 		--width $(WIDTH2) --height 3 \
-    --1-name "DPDK (VM)" --1 $(DATA)/vm_mirrorUnconfidential_*_b32_0ns_0b_c1_*b_rep*.log \
-    --2-name "Linux (CVM)" --2 $(DATA)/vm_mirrorKni_*_b32_0ns_0b_c1_*b_rep*.log \
-    --3-name "Slick (CVM)" --3 $(DATA)/vm_iomgr_*_b32_0ns_0b_c1_*b_rep*.log \
-    --4-name "Containers (CVM)" --4 $(DATA)/vm_containers_*_b32_0ns_0b_c1_*b_rep*.log \
-    --5-name "Kata (VM)" --5 $(DATA)/vm_kata_*_b32_0ns_0b_c1_*b_rep*.log \
+    --1-name "Containers (CVM)" --1 $(DATA)/vm_containers_*_b32_0ns_0b_c1_*b_rep*.log \
+    --2-name "Kata (VM)" --2 $(DATA)/vm_kata_*_b32_0ns_0b_c1_*b_rep*.log \
+    --3-name "DPDK (VM)" --3 $(DATA)/vm_mirrorUnconfidential_*_b32_0ns_0b_c1_*b_rep*.log \
+    --4-name "Linux (CVM)" --4 $(DATA)/vm_mirrorKni_*_b32_0ns_0b_c1_*b_rep*.log \
+    --5-name "Slick (CVM)" --5 $(DATA)/vm_mirror_*_b32_0ns_0b_c1_*b_rep*.log \
 
     # --2-name "DPDK (CVM)" --2 $(DATA)/vm_mirror_synthetic_b32_0ns_0b_c1_*b_rep*.log \
 
@@ -96,13 +101,13 @@ vnfletio.pdf:
 	python3 $(PYARGS) vnfletio.py \
 		-o $(OUT_DIR)/vnfletio.pdf \
 		--width $(WIDTH2) --height 2 \
-    --1-name "DPDK" --1 $(DATA)/vm_mirrorMicrobenchmark_*_b*_0ns_0b_c1_64b_rep*.log \
-    --2-name "DPDK" --2 $(DATA)/vm_mirrorMicrobenchmark_*_b*_0ns_0b_c1_1500b_rep*.log \
-    --5-name "Slick" --5 $(DATA)/vm_iomgrMicrobenchmark_*_b*_0ns_0b_c1_64b_rep*.log \
-    --6-name "Slick" --6 $(DATA)/vm_iomgrMicrobenchmark_*_b*_0ns_0b_c1_1500b_rep*.log \
+    --1-name "DPDK" --1 $(DATA)/vm_mirrorMicrobenchmark_*_b32_0ns_0b_c1_64b_rep*.log \
+    --2-name "DPDK" --2 $(DATA)/vm_mirrorMicrobenchmark_*_b32_0ns_0b_c1_1500b_rep*.log \
+    --5-name "Slick" --5 $(DATA)/vm_iomgrMicrobenchmark_*_b32_0ns_0b_c1_64b_rep*.log \
+    --6-name "Slick" --6 $(DATA)/vm_iomgrMicrobenchmark_*_b32_0ns_0b_c1_1500b_rep*.log \
 		-l \
-    --3-name "Linux" --3 $(DATA)/vm_mirrorKniMicrobenchmark_*_b*_0ns_0b_c1_64b_rep*.log \
-    --4-name "Linux" --4 $(DATA)/vm_mirrorKniMicrobenchmark_*_b*_0ns_0b_c1_1500b_rep*.log \
+    --3-name "Linux" --3 $(DATA)/vm_mirrorKniMicrobenchmark_*_b32_0ns_0b_c1_64b_rep*.log \
+    --4-name "Linux" --4 $(DATA)/vm_mirrorKniMicrobenchmark_*_b32_0ns_0b_c1_1500b_rep*.log \
 
 packet-overhead.pdf:
 	python3 $(PYARGS) packet-overhead.py \
