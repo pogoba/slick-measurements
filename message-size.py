@@ -211,38 +211,89 @@ def chain(lst: list[list]) -> list:
 def mpps_to_gbitps(mpps, size):
     return mpps * (size + 20) * 8 / 1000 # 20: preamble + packet gap
 
+
+# IPC network communication data (extracted from IPC_log.pdf)
+MESSAGE_SIZES = ["64B", "256B", "1KB", "8KB", "16KB", "64KB", "256KB", "1MB"]
+MESSAGE_SIZES_BYTES = [64, 256, 1024, 8192, 16384, 65536, 262144, 1048576]
+
+
+def compute_override_times(filepaths):
+    """Compute communication times for a system from measured Mpps logs.
+
+    Each input log reports Mpps for a single packet size; the communication
+    time is taken as 1/Mpps. Message sizes larger than the biggest one we
+    actually measured are extrapolated by assuming we have to send multiple
+    copies of the largest measured packet (e.g. 16KB time = 16 * 1KB time).
+    """
+    times_by_pktsize = {}
+    for fh in filepaths:
+        df = pd.read_csv(fh.name)
+        pktsize = int(df["pktsize"].iloc[0])
+        # 1/Mpps is microseconds per message; /1000 -> milliseconds
+        times_by_pktsize[pktsize] = (1.0 / df["Mpps"].mean()) / 1000
+
+    # largest message size for which we have a direct measurement; bigger
+    # message sizes are extrapolated as multiples of this one's time
+    measured = [b for b in MESSAGE_SIZES_BYTES if b in times_by_pktsize]
+    base_b = max(measured)
+    base_time = times_by_pktsize[base_b]
+
+    result = {}
+    for size, size_b in zip(MESSAGE_SIZES, MESSAGE_SIZES_BYTES):
+        if size_b in times_by_pktsize:
+            result[size] = times_by_pktsize[size_b]
+        else:
+            result[size] = (size_b / base_b) * base_time
+    return result
+
+
 def main():
     parser = setup_parser()
     args = parser.parse_args()
 
-    # IPC network communication data (extracted from IPC_log.pdf)
-    MESSAGE_SIZES = ["64B", "256B", "1KB", "8KB", "16KB", "64KB", "256KB", "1MB"]
-    MESSAGE_SIZES_BYTES = [64, 256, 1024, 8192, 16384, 65536, 262144, 1048576]
     IPC_DATA = {
-        "Native":           [0.14,  0.12,  0.13,  0.16,  0.19,  0.25,  0.25,  0.26],
-        "LibOS (Gramine)":  [0.09,  0.085, 0.085, 0.11,  0.13,  0.35,  1.3,   7.0],
-        "Containers (Kata)":[0.6,   0.58,  0.65,  0.65,  0.7,   1.5,   3.0,   8.0],
-        "VM (KVM-Linux)":   [3.7,   3.6,   3.5,   3.6,   4.2,   5.0,   8.5,   14.0],
-        "CVM (SEV-SNP)":    [4.5,   4.3,   4.2,   4.5,   4.8,   5.5,   9.0,   16.0],
-        "Wallet":           [0.22,  0.20,  0.25,  0.27,  0.38,  0.40,  1.8,   6.0],
+        # "Native":           [0.14,  0.12,  0.13,  0.16,  0.19,  0.25,  0.25,  0.26],
+        # "LibOS (Gramine)":  [0.09,  0.085, 0.085, 0.11,  0.13,  0.35,  1.3,   7.0],
+        # "Containers (Kata)":[0.6,   0.58,  0.65,  0.65,  0.7,   1.5,   3.0,   8.0],
+        # "VM (KVM-Linux)":   [3.7,   3.6,   3.5,   3.6,   4.2,   5.0,   8.5,   14.0],
+        # "CVM (SEV-SNP)":    [4.5,   4.3,   4.2,   4.5,   4.8,   5.5,   9.0,   16.0],
+        # "Wallet":           [0.22,  0.20,  0.25,  0.27,  0.38,  0.40,  1.8,   6.0],
     }
+
+    # Any system whose data files are passed via --<color> overrides the
+    # hardcoded values for the system named via --<color>-name.
+    overrides = {}
+    for color in COLORS:
+        files = args.__dict__.get(color)
+        if not files:
+            continue
+        name = args.__dict__.get(f"{color}_name", color)
+        if isinstance(name, list):
+            name = " ".join(name)
+        overrides[name] = compute_override_times(files)
 
     rows = []
     for system, times in IPC_DATA.items():
+        if system in overrides:
+            continue
         for size, time_ms in zip(MESSAGE_SIZES, times):
             rows.append({"system": system, "message_size": size, "time_ms": time_ms})
-    for size, size_b in zip(MESSAGE_SIZES, MESSAGE_SIZES_BYTES):
-        if size == "64B":
-            gbit = 4.1
-            message_ps = gbit * 1024 * 1024 * 1024 / 8 / 64
-            time_ms = 1000 / message_ps
-            time_ms += 0.009 # latency
-        else:
-            gbit = 37.7
-            message_ps = gbit * 1024 * 1024 * 1024 / 8 / size_b
-            time_ms = 1000 / message_ps
-            time_ms += 0.016 # latency
-        rows.append({"system": "Slick", "message_size": size, "time_ms": time_ms})
+    # if "Slick" not in overrides:
+    #     for size, size_b in zip(MESSAGE_SIZES, MESSAGE_SIZES_BYTES):
+    #         if size == "64B":
+    #             gbit = 4.1
+    #             message_ps = gbit * 1024 * 1024 * 1024 / 8 / 64
+    #             time_ms = 1000 / message_ps
+    #             time_ms += 0.009 # latency
+    #         else:
+    #             gbit = 37.7
+    #             message_ps = gbit * 1024 * 1024 * 1024 / 8 / size_b
+    #             time_ms = 1000 / message_ps
+    #             time_ms += 0.016 # latency
+    #         rows.append({"system": "Slick", "message_size": size, "time_ms": time_ms})
+    for name, times in overrides.items():
+        for size in MESSAGE_SIZES:
+            rows.append({"system": name, "message_size": size, "time_ms": times[size]})
     df = pd.DataFrame(rows)
     df["message_size"] = pd.Categorical(df["message_size"], categories=MESSAGE_SIZES, ordered=True)
 

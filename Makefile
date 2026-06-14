@@ -1,7 +1,7 @@
 .PHONY: repl
 
-OUT_DIR := ./pdfs/out23-output6v2
-DATA := ./data/out23-output6v2
+OUT_DIR := ./pdfs/out24-output6v2
+DATA := ./data/out24-output6v2
 ROOT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 PYARGS :=
 PAPER_FIGURES := app-throughput.pdf chain-scalability.pdf microbenchmarks.pdf packet-overhead.pdf
@@ -124,4 +124,10 @@ network-performance.pdf:
 message-size.pdf:
 	python3 $(PYARGS) message-size.py \
 		-o $(OUT_DIR)/message-size.pdf \
-		--width $(WIDTH3) --height 3
+		--width $(WIDTH3) --height 3 \
+		--1-name "Containers" --1 $(DATA)/vm_containers_synthetic_b32_0ns_0b_c1_*b_rep0.log \
+		--2-name "Kata" --2 $(DATA)/vm_kata_synthetic_b32_0ns_0b_c1_*b_rep0.log \
+		--3-name "CVM" --3 $(DATA)/vm_mirrorKni_synthetic_b32_0ns_0b_c1_*b_rep0.log \
+		--4-name "VM (DPDK)" --4 $(DATA)/vm_mirrorUnconfidential_synthetic_b32_0ns_0b_c1_*b_rep0.log \
+		--5-name "Slick (DPDK)" --5 $(DATA)/vm_mirror_synthetic_b32_0ns_0b_c1_*b_rep0.log \
+
