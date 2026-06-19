@@ -1,7 +1,7 @@
 .PHONY: repl
 
-OUT_DIR := ./pdfs/out25-output7-mem
-DATA := ./data/out25-output7-mem
+OUT_DIR := ./pdfs/out26-output7-mem
+DATA := ./data/out26-output7-mem
 ROOT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 PYARGS :=
 PAPER_FIGURES := app-throughput.pdf chain-scalability.pdf microbenchmarks.pdf packet-overhead.pdf
@@ -148,3 +148,8 @@ memory-consumption.pdf:
 		--2-name "Kata" --2 $(DATA)/mem_kata_*_rep*.log \
 		--3-name "CVM" --3 $(DATA)/mem_cvm_*_rep*.log \
 
+startup-time.pdf:
+	python3 $(PYARGS) startup-time.py \
+		-o $(OUT_DIR)/startup-time.pdf \
+		--width $(WIDTH3) --height 2.5 \
+		--1-name "all" --1 $(DATA)/startup.csv
