@@ -30,15 +30,59 @@ hatches[2] = _hatches[0]
 
 COLORS = [ str(i) for i in range(20) ]
 
-# Order systems by increasing isolation/overhead
-SYSTEM_ORDER = ['native', 'gramine', 'kata', 'vm', 'cvm']
+# Order systems by increasing isolation/overhead. The Slick variants are CVM
+# plus a cumulative stack of iomgr's startup phases (see build_slick_systems).
+SYSTEM_ORDER = ['native', 'gramine', 'kata', 'vm', 'cvm',
+                'slick', 'zygote', 'trustlet']
 system_map = {
         'native': 'Native',
         'gramine': 'Gramine',
         'kata': 'Kata',
         'vm': 'VM',
         'cvm': 'CVM',
+        'slick': 'Slick',
+        'zygote': 'Zygote',
+        'trustlet': 'Trustlet',
         }
+
+# iomgr phases (from out29 startup.csv) that make up the Slick systems. The
+# "remaining" tasks are the small ones that are merged into one segment.
+IOMGR_REMAINING = ['trustlet', 'iomgr_shm', 'init_trustlets',
+                   'trustlet_shm', 'init_trustlets2', 'launch_trustlets']
+
+
+def build_slick_systems(data):
+    """Synthesize the Slick systems from the CVM base and iomgr phases.
+
+      - slick:    CVM base + DPDK
+      - zygote:   iomgr's zygote phase only, shown as a single "Runtime" segment
+      - trustlet: remaining iomgr tasks only (~2.5s), as a single "Invoke" segment
+
+    Returns `data` with the new systems appended and the raw 'iomgr' rows
+    (which only existed to source these phases) removed.
+    """
+    iomgr = data[data['system'] == 'iomgr'].groupby('step')['time_ms'].mean()
+    cvm = data[data['system'] == 'cvm'].groupby('step')['time_ms'].mean()
+
+    # Slick is a CVM that additionally runs iomgr's DPDK init; the other two
+    # systems consist solely of their respective iomgr phase(s), reusing the
+    # existing "Runtime"/"Invoke" step labels.
+    systems = {
+        'slick': [(step, t) for step, t in cvm.items()] + [('DPDK', iomgr['dpdk'])],
+        'zygote': [('Runtime', iomgr['zygote'])],
+        'trustlet': [('Invoke', iomgr[IOMGR_REMAINING].sum())],
+    }
+
+    extra = pd.concat([
+        pd.DataFrame([
+            {'system': name, 'sample': 0, 'step': step, 'time_ms': t}
+            for step, t in steps
+        ])
+        for name, steps in systems.items()
+    ], ignore_index=True)
+
+    data = data[data['system'] != 'iomgr']
+    return pd.concat([data, extra], ignore_index=True)
 
 # Stacking order of startup phases, bottom (earliest) to top (latest).
 # Phases that never co-occur in the same system are interleaved so that each
@@ -151,6 +195,8 @@ def main():
     # Kata's "Early runtime" is a runtime phase like "Runtime"; merge the two
     # to keep the legend compact (totals are preserved).
     data['step'] = data['step'].replace({'Early runtime': 'Runtime'})
+    # Add the CVM-based Slick systems built from iomgr's startup phases.
+    data = build_slick_systems(data)
     # Sum phases sharing a label within a sample, then average over samples
     per_sample = data.groupby(['system', 'sample', 'step'])['time_ms'].sum().reset_index()
     df = per_sample.groupby(['system', 'step'])['time_ms'].mean().reset_index()
@@ -239,24 +285,23 @@ def main():
         target.annotate(f"{total:.1f}", xy=(i, total), xytext=(0, 2),
                         textcoords="offset points", ha="center", va="bottom")
 
-    if (args.slides):
-        ax_bottom.annotate(
-            "↓ Lower is better", # or ↓ ← ↑ →
-            xycoords="axes points",
-            xy=(0, 0),
-            xytext=(-4, -28),
-            color="navy",
-            weight="bold",
-        )
+    ax_top.text(
+        0.03, 0.95, "↓ Lower is better", # or ↓ ← ↑ →
+        transform=ax_top.transAxes,
+        ha="left", va="top",
+        color="navy",
+        weight="bold",
+    )
 
     ax_bottom.set_xlabel("")
     ax_top.set_ylabel("")
-    ax_bottom.set_ylabel("")
-    fig.supylabel(YLABEL)
+    # use a regular axis label (default 'medium' size) centered across both panels
+    ax_bottom.set_ylabel(YLABEL)
+    ax_bottom.yaxis.set_label_coords(-0.23, 1.5)
 
     fig.tight_layout(pad=0.1)
     # widen the left margin so the y-axis label clears the tick numbers
-    fig.subplots_adjust(top=0.7, hspace=0.12, left=0.23, right=0.98)
+    fig.subplots_adjust(top=0.55, hspace=0.12, left=0.23, right=0.98)
     fig.savefig(args.output.name)
     plt.close()
 
