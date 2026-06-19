@@ -152,14 +152,14 @@ def main():
     rename_legend_labels(ax, LEGEND_MAP)
 
     # Position the legend outside the plot area
-    sns.move_legend(ax, "upper center", bbox_to_anchor=(0.4, 1.4),
+    sns.move_legend(ax, "upper center", bbox_to_anchor=(0.4, 1.2),
                     ncol=3, title=None, frameon=False)
 
     ax.annotate(
         "↓ Lower is better", # or ↓ ← ↑ →
         xycoords="axes points",
         xy=(10, 0),
-        xytext=(-45, -27),
+        xytext=(-25, -27),
         color="navy",
         weight="bold",
     )
@@ -181,8 +181,8 @@ def main():
     ax.set_ylabel('Memory (GiB)')
 
     # Adjust layout and save
-    fig.tight_layout(pad=0.01)
-    fig.subplots_adjust(top=0.8)
+    fig.tight_layout(pad=0.03)
+    # fig.subplots_adjust(top=0.8)
     fig.savefig(args.output.name)
     plt.close()
 

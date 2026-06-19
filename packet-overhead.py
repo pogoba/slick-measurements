@@ -62,6 +62,11 @@ system_map = {
 YLABEL = 'Processing time [ns]'
 XLABEL = 'System'
 
+# Broken y-axis: the lower half zooms into [0, SPLIT] so the smaller
+# contributors (and the batched bars) are readable; the upper half shows
+# [SPLIT, max] so the tall VM-exit segment stays in view.
+SPLIT = 1300
+
 def map_hue(df_hue, hue_map):
     return df_hue.apply(lambda row: hue_map.get(str(row), row))
 
@@ -150,18 +155,6 @@ def main():
     parser = setup_parser()
     args = parse_args(parser)
 
-    fig = plt.figure(figsize=(args.width, args.height))
-    # fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1)
-    # ax.set_axisbelow(True)
-    if args.title:
-        plt.title(args.title)
-    if not args.slides:
-        plt.grid()
-    # plt.xlim(0, 0.83)
-    log_scale = (False, True) if args.logarithmic else False
-    # ax.set_yscale('log' if args.logarithmic else 'linear')
-
     log("Using hardcoded data")
     # Hardcoded data to replace parse_data(df) and CSV reading
     rows = []
@@ -210,146 +203,88 @@ def main():
     df['system'] = pd.Categorical(df['system'], ['VMs', 'CVMs', 'VMs (batched)', 'CVMs (batched)'])
     # Rename VMs to vms
     df['system'] = df['system'].cat.rename_categories({'VMs (batched)': 'VMs\n(batched) ', 'CVMs (batched)': 'CVMs\n (batched)'})
-    # Plot using Seaborn
-    sns.histplot(
-               data=df,
-               x='system',
-               weights='restart_s',
-               hue="Contributor",
-               hue_order = ['VM exit', 'De/encryption', 'Bounce buffer', 'Memory copy', 'Other'],
-               multiple="stack",
-               # palette=palette,
-               palette="deep",
-               edgecolor="dimgray",
-               shrink=0.8,
-               )
+    # Broken y-axis: stack the same plot on two axes and zoom each differently.
+    fig, (ax_top, ax_bottom) = plt.subplots(
+        2, 1, sharex=True, figsize=(args.width, args.height),
+        gridspec_kw={'height_ratios': [1, 1]},
+    )
+    if args.title:
+        ax_top.set_title(args.title)
 
-    # sns.add_legend(
-    #         # bbox_to_anchor=(0.5, 0.77),
-    #         loc='right',
-    #         ncol=1, title=None, frameon=False,
-    #                 )
+    hue_order = ['VM exit', 'De/encryption', 'Bounce buffer', 'Memory copy', 'Other']
+    for ax in (ax_top, ax_bottom):
+        ax.set_axisbelow(True)
+        if not args.slides:
+            ax.grid()
+        sns.histplot(
+                   data=df,
+                   x='system',
+                   weights='restart_s',
+                   hue="Contributor",
+                   hue_order=hue_order,
+                   multiple="stack",
+                   palette="deep",
+                   edgecolor="dimgray",
+                   shrink=0.8,
+                   legend=(ax is ax_top),
+                   ax=ax,
+                   )
 
-    # # Fix the legend hatches
-    # for i, legend_patch in enumerate(grid._legend.get_patches()):
-    #     hatch = hatches[i % len(hatches)]
-    #     legend_patch.set_hatch(f"{hatch}{hatch}")
+    # lower half zooms in, upper half shows the bar tops
+    total_max = df.groupby('system', observed=True)['restart_s'].sum().max()
+    ax_bottom.set_ylim(0, SPLIT)
+    ax_top.set_ylim(SPLIT, total_max * 1.05)
 
-    # # add hatches to bars
-    # for (i, j, k), data in grid.facet_data():
-    #     print(i, j, k)
-    #     def barplot_add_hatches(plot_in_grid, nr_hues, offset=0):
-    #         hatches_used = -1
-    #         bars_hatched = 0
-    #         for bar in plot_in_grid.patches:
-    #             if nr_hues <= 1:
-    #                 hatches_used += 1
-    #             else: # with multiple hues, we draw bars with the same hatch in batches
-    #                 if bars_hatched % nr_hues == 0:
-    #                     hatches_used += 1
-    #             # if bars_hatched % 7 == 0:
-    #             #     hatches_used += 1
-    #             bars_hatched += 1
-    #             if bar.get_bbox().x0 == 0 and bar.get_bbox().x1 == 0 and bar.get_bbox().y0 == 0 and bar.get_bbox().y1 == 0:
-    #                 # skip bars that are not rendered
-    #                 continue
-    #             hatch = hatches[(offset + hatches_used) % len(hatches)]
-    #             print(bar, hatches_used, hatch)
-    #             bar.set_hatch(hatch)
-    #
-    #     if (i, j, k) == (0, 0, 0):
-    #         barplot_add_hatches(grid.facet_axis(i, j), 7)
-    #     elif (i, j, k) == (0, 1, 0):
-    #         barplot_add_hatches(grid.facet_axis(i, j), 1, offset=(7 if not args.slides else 4))
+    # hide the facing spines and draw diagonal break marks across the cut
+    ax_top.spines['bottom'].set_visible(False)
+    ax_bottom.spines['top'].set_visible(False)
+    ax_top.tick_params(axis='x', which='both', bottom=False, labelbottom=False)
 
-    # def grid_set_titles(grid, titles):
-    #     for ax, title in zip(grid.axes.flat, titles):
-    #         ax.set_title(title)
-    #
-    # grid_set_titles(grid, ["Emulation and Mediation", "Passthrough"])
-    #
-    # grid.figure.set_size_inches(args.width, args.height)
-    # grid.set_titles("foobar")
-    # plt.subplots_adjust(left=0.06)
-    # bar = sns.barplot(x='num_vms', y='rxMppsCalc', hue="hue", data=pd.concat(dfs),
-    #             palette='colorblind',
-    #             edgecolor='dimgray',
-    #             # kind='bar',
-    #             # capsize=.05,  # errorbar='sd'
-    #             # log_scale=log_scale,
-    #             ax=ax,
-    #             )
+    d = .5  # slope of the diagonal break marks
+    break_kwargs = dict(marker=[(-1, -d), (1, d)], markersize=8,
+                        linestyle="none", color='dimgray', mec='dimgray',
+                        mew=1, clip_on=False)
+    ax_top.plot([0, 1], [0, 0], transform=ax_top.transAxes, **break_kwargs)
+    ax_bottom.plot([0, 1], [1, 1], transform=ax_bottom.transAxes, **break_kwargs)
+
     sns.move_legend(
-        ax, "lower center",
-        bbox_to_anchor=(.5, 1.02), ncol=2, title=None, frameon=False,
+        ax_top, "upper center",
+        bbox_to_anchor=(.5, 1.0), bbox_transform=fig.transFigure,
+        ncol=2, title=None, frameon=False,
     )
 
     color_hatch_map = dict()
     # Fix the legend hatches
-    for i, legend_patch in enumerate(ax.get_legend().get_patches()):
+    for i, legend_patch in enumerate(ax_top.get_legend().get_patches()):
         hatch = hatches[i % len(hatches)]
         legend_patch.set_hatch(f"{hatch}{hatch}")
         color_hatch_map[legend_patch.get_facecolor()] = hatch
-        print(f"legend {hatch}")
 
-    for bar in ax.patches:
-        hatch = color_hatch_map[bar.get_facecolor()]
-        bar.set_hatch(hatch)
-    #
-    # sns.move_legend(
-    #     grid, "lower center",
-    #     bbox_to_anchor=(0.45, 1),
-    #     ncol=1,
-    #     title=None,
-    #     # frameon=False,
-    # )
-    # grid.set_xlabels(XLABEL)
-    # grid.set_ylabels(YLABEL)
-    #
+    for ax in (ax_top, ax_bottom):
+        for bar in ax.patches:
+            hatch = color_hatch_map.get(bar.get_facecolor())
+            if hatch is not None:
+                bar.set_hatch(hatch)
+
     if (args.slides):
-        ax.annotate(
+        ax_bottom.annotate(
             "↓ Lower is better", # or ↓ ← ↑ →
             xycoords="axes points",
-            # xy=(0, 0),
             xy=(0, 0),
             xytext=(-4, -28),
-            # fontsize=FONT_SIZE,
             color="navy",
             weight="bold",
         )
 
-    plt.xlabel(XLABEL)
-    plt.ylabel(YLABEL)
+    ax_bottom.set_xlabel(XLABEL)
+    ax_top.set_ylabel("")
+    # use a regular axis label (default 'medium' size) centered across both panels
+    ax_bottom.set_ylabel(YLABEL)
+    ax_bottom.yaxis.set_label_coords(-0.18, 1.0)
 
-    # plt.ylim(0, 250)
-    if not args.logarithmic:
-        plt.ylim(bottom=0)
-    plt.ylim(top=2100)
-    # for container in ax.containers:
-    #     ax.bar_label(container, fmt='%.0f')
-
-    # # iterate through each container, hatch, and legend handle
-    # for container, hatch, handle in zip(ax.containers, hatches, ax.get_legend().legend_handles[::-1]):
-    #     # update the hatching in the legend handle
-    #     handle.set_hatch(hatch)
-    #     # iterate through each rectangle in the container
-    #     for rectangle in container:
-    #         # set the rectangle hatch
-    #         rectangle.set_hatch(hatch)
-
-    # # Loop over the bars
-    # for i,thisbar in enumerate(bar.patches):
-    #     # Set a different hatch for each bar
-    #     thisbar.set_hatch(hatches[i % len(hatches)])
-
-    # legend = plt.legend()
-    # legend.get_frame().set_facecolor('white')
-    # legend.get_frame().set_alpha(0.8)
-    # fig.tight_layout(rect = (0, 0, 0, 0.1))
-    # ax.set_position((0.1, 0.1, 0.5, 0.8))
-    plt.tight_layout(pad=0.1)
-    plt.subplots_adjust(top=0.7)
-    plt.savefig(args.output.name)
+    fig.tight_layout(pad=0.1)
+    fig.subplots_adjust(top=0.7, hspace=0.12, left=0.2)
+    fig.savefig(args.output.name)
     plt.close()
 
 
