@@ -47,13 +47,12 @@ STEP_ORDER = [
     'VMM (QEMU)',
     'Firmware (OVMF)',
     'OS/Guest-OS',
-    'Early runtime',
     'VMM+OVMF+OS',
     'Runtime',
     'Invoke',
 ]
 
-YLABEL = 'Startup time [ms]'
+YLABEL = 'Startup [ms]'
 XLABEL = 'System'
 
 # Broken y-axis: the lower half zooms into [0, SPLIT_LOW] so the small systems
@@ -149,8 +148,12 @@ def main():
     data = pd.concat(dfs, ignore_index=True)
 
     log("Preparing plotting data")
-    # Mean over samples per (system, step)
-    df = data.groupby(['system', 'step'])['time_ms'].mean().reset_index()
+    # Kata's "Early runtime" is a runtime phase like "Runtime"; merge the two
+    # to keep the legend compact (totals are preserved).
+    data['step'] = data['step'].replace({'Early runtime': 'Runtime'})
+    # Sum phases sharing a label within a sample, then average over samples
+    per_sample = data.groupby(['system', 'sample', 'step'])['time_ms'].sum().reset_index()
+    df = per_sample.groupby(['system', 'step'])['time_ms'].mean().reset_index()
 
     systems = [s for s in SYSTEM_ORDER if s in df['system'].unique()]
     # Order stack segments by overall magnitude so the smallest portions end up
@@ -190,7 +193,7 @@ def main():
     # lower half zooms in, upper half shows the bar tops
     total_max = df.groupby('system', observed=True)['time_ms'].sum().max()
     ax_bottom.set_ylim(0, SPLIT_LOW)
-    ax_top.set_ylim(SPLIT_HIGH, total_max * 1.15)
+    ax_top.set_ylim(SPLIT_HIGH, total_max * 1.4)
 
     # hide the facing spines and draw diagonal break marks across the cut
     ax_top.spines['bottom'].set_visible(False)
@@ -207,10 +210,13 @@ def main():
     sns.move_legend(
         ax_top, "upper center",
         bbox_to_anchor=(.5, 1.0), bbox_transform=fig.transFigure,
-        ncol=2, title=None, frameon=False, fontsize=8,
+        ncol=2, title=None, frameon=False,
     )
-    # keep the (many) x-axis system labels from overlapping in a narrow figure
-    ax_bottom.tick_params(axis='x', labelsize=8)
+    # rotate the system labels (like network-performance.pdf) so they fit at the
+    # default font size without overlapping
+    for label in ax_bottom.get_xticklabels():
+        label.set_rotation(30)
+        label.set_horizontalalignment('right')
 
     color_hatch_map = dict()
     # Fix the legend hatches
@@ -231,8 +237,7 @@ def main():
         total = totals[name]
         target = ax_top if total > SPLIT_LOW else ax_bottom
         target.annotate(f"{total:.1f}", xy=(i, total), xytext=(0, 2),
-                        textcoords="offset points", ha="center", va="bottom",
-                        fontsize=7)
+                        textcoords="offset points", ha="center", va="bottom")
 
     if (args.slides):
         ax_bottom.annotate(
@@ -244,13 +249,14 @@ def main():
             weight="bold",
         )
 
-    ax_bottom.set_xlabel(XLABEL)
+    ax_bottom.set_xlabel("")
     ax_top.set_ylabel("")
     ax_bottom.set_ylabel("")
-    fig.supylabel(YLABEL, fontsize=10)
+    fig.supylabel(YLABEL)
 
     fig.tight_layout(pad=0.1)
-    fig.subplots_adjust(top=0.7, hspace=0.12)
+    # widen the left margin so the y-axis label clears the tick numbers
+    fig.subplots_adjust(top=0.7, hspace=0.12, left=0.23, right=0.98)
     fig.savefig(args.output.name)
     plt.close()
 
