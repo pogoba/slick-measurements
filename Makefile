@@ -1,7 +1,7 @@
 .PHONY: repl
 
-OUT_DIR := ./pdfs/out24-output6v2
-DATA := ./data/out24-output6v2
+OUT_DIR := ./pdfs/out25-output7-mem
+DATA := ./data/out25-output7-mem
 ROOT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 PYARGS :=
 PAPER_FIGURES := app-throughput.pdf chain-scalability.pdf microbenchmarks.pdf packet-overhead.pdf
@@ -139,4 +139,12 @@ message-size.pdf:
 		--3-name "CVM" --3 $(DATA)/vm_mirrorKni_synthetic_b32_0ns_0b_c1_*b_rep0.log \
 		--4-name "VM (DPDK)" --4 $(DATA)/vm_mirrorUnconfidential_synthetic_b32_0ns_0b_c1_*b_rep0.log \
 		--5-name "Slick (DPDK)" --5 $(DATA)/vm_mirror_synthetic_b32_0ns_0b_c1_*b_rep0.log \
+
+memory-consumption.pdf:
+	python3 $(PYARGS) memory-consumption.py \
+		-o $(OUT_DIR)/memory-consumption.pdf \
+		--width $(WIDTH3) --height 2.5 \
+		--1-name "VM" --1 $(DATA)/mem_vm_*_rep*.log \
+		--2-name "Kata" --2 $(DATA)/mem_kata_*_rep*.log \
+		--3-name "CVM" --3 $(DATA)/mem_cvm_*_rep*.log \
 
