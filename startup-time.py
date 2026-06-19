@@ -56,6 +56,12 @@ STEP_ORDER = [
 YLABEL = 'Startup time [ms]'
 XLABEL = 'System'
 
+# Broken y-axis: the lower half zooms into [0, SPLIT_LOW] so the small systems
+# (Gramine, Kata, ...) are readable; the upper half shows [SPLIT_HIGH, max] to
+# keep the tall VM/CVM bars in view.
+SPLIT_LOW = 400
+SPLIT_HIGH = 400
+
 def map_hue(df_hue, hue_map):
     return df_hue.apply(lambda row: hue_map.get(str(row), row))
 
@@ -130,13 +136,6 @@ def main():
     parser = setup_parser()
     args = parse_args(parser)
 
-    fig = plt.figure(figsize=(args.width, args.height))
-    ax = fig.add_subplot(1, 1, 1)
-    if args.title:
-        plt.title(args.title)
-    if not args.slides:
-        plt.grid()
-
     # All data comes from a single file holding every system's breakdown.
     log("Reading data")
     dfs = []
@@ -154,46 +153,89 @@ def main():
     df = data.groupby(['system', 'step'])['time_ms'].mean().reset_index()
 
     systems = [s for s in SYSTEM_ORDER if s in df['system'].unique()]
-    steps = [s for s in STEP_ORDER if s in df['step'].unique()]
+    # Order stack segments by overall magnitude so the smallest portions end up
+    # at the bottom of each bar (seaborn stacks hue_order[0] at the top).
+    step_sizes = df.groupby('step', observed=True)['time_ms'].sum()
+    steps = list(step_sizes.sort_values(ascending=False).index)
 
     df['system'] = pd.Categorical(df['system'], categories=systems, ordered=True)
     df['system'] = df['system'].cat.rename_categories(system_map)
 
-    # Plot using Seaborn
-    sns.histplot(
-               data=df,
-               x='system',
-               weights='time_ms',
-               hue="step",
-               hue_order=steps,
-               multiple="stack",
-               palette="deep",
-               edgecolor="dimgray",
-               shrink=0.8,
-               )
+    # Broken y-axis: stack the same plot on two axes and zoom each differently.
+    fig, (ax_top, ax_bottom) = plt.subplots(
+        2, 1, sharex=True, figsize=(args.width, args.height),
+        gridspec_kw={'height_ratios': [2, 1]},
+    )
+    if args.title:
+        ax_top.set_title(args.title)
+
+    for ax in (ax_top, ax_bottom):
+        ax.set_axisbelow(True)
+        if not args.slides:
+            ax.grid()
+        sns.histplot(
+                   data=df,
+                   x='system',
+                   weights='time_ms',
+                   hue="step",
+                   hue_order=steps,
+                   multiple="stack",
+                   palette="deep",
+                   edgecolor="dimgray",
+                   shrink=0.8,
+                   legend=(ax is ax_top),
+                   ax=ax,
+                   )
+
+    # lower half zooms in, upper half shows the bar tops
+    total_max = df.groupby('system', observed=True)['time_ms'].sum().max()
+    ax_bottom.set_ylim(0, SPLIT_LOW)
+    ax_top.set_ylim(SPLIT_HIGH, total_max * 1.15)
+
+    # hide the facing spines and draw diagonal break marks across the cut
+    ax_top.spines['bottom'].set_visible(False)
+    ax_bottom.spines['top'].set_visible(False)
+    ax_top.tick_params(axis='x', which='both', bottom=False, labelbottom=False)
+
+    d = .5  # slope of the diagonal break marks
+    break_kwargs = dict(marker=[(-1, -d), (1, d)], markersize=8,
+                        linestyle="none", color='dimgray', mec='dimgray',
+                        mew=1, clip_on=False)
+    ax_top.plot([0, 1], [0, 0], transform=ax_top.transAxes, **break_kwargs)
+    ax_bottom.plot([0, 1], [1, 1], transform=ax_bottom.transAxes, **break_kwargs)
 
     sns.move_legend(
-        ax, "lower center",
-        bbox_to_anchor=(.5, 1.02), ncol=2, title=None, frameon=False,
-        fontsize=8,
+        ax_top, "upper center",
+        bbox_to_anchor=(.5, 1.0), bbox_transform=fig.transFigure,
+        ncol=2, title=None, frameon=False, fontsize=8,
     )
     # keep the (many) x-axis system labels from overlapping in a narrow figure
-    ax.tick_params(axis='x', labelsize=8)
+    ax_bottom.tick_params(axis='x', labelsize=8)
 
     color_hatch_map = dict()
     # Fix the legend hatches
-    for i, legend_patch in enumerate(ax.get_legend().get_patches()):
+    for i, legend_patch in enumerate(ax_top.get_legend().get_patches()):
         hatch = hatches[i % len(hatches)]
         legend_patch.set_hatch(f"{hatch}{hatch}")
         color_hatch_map[legend_patch.get_facecolor()] = hatch
 
-    for bar in ax.patches:
-        hatch = color_hatch_map.get(bar.get_facecolor())
-        if hatch is not None:
-            bar.set_hatch(hatch)
+    for ax in (ax_top, ax_bottom):
+        for bar in ax.patches:
+            hatch = color_hatch_map.get(bar.get_facecolor())
+            if hatch is not None:
+                bar.set_hatch(hatch)
+
+    # Total labels above each stacked bar, on whichever half the total sits in
+    totals = df.groupby('system', observed=True)['time_ms'].sum()
+    for i, name in enumerate(system_map[s] for s in systems):
+        total = totals[name]
+        target = ax_top if total > SPLIT_LOW else ax_bottom
+        target.annotate(f"{total:.1f}", xy=(i, total), xytext=(0, 2),
+                        textcoords="offset points", ha="center", va="bottom",
+                        fontsize=7)
 
     if (args.slides):
-        ax.annotate(
+        ax_bottom.annotate(
             "↓ Lower is better", # or ↓ ← ↑ →
             xycoords="axes points",
             xy=(0, 0),
@@ -202,17 +244,14 @@ def main():
             weight="bold",
         )
 
-    plt.xlabel(XLABEL)
-    plt.ylabel(YLABEL)
+    ax_bottom.set_xlabel(XLABEL)
+    ax_top.set_ylabel("")
+    ax_bottom.set_ylabel("")
+    fig.supylabel(YLABEL, fontsize=10)
 
-    if args.logarithmic:
-        ax.set_yscale('log')
-    else:
-        plt.ylim(bottom=0)
-
-    plt.tight_layout(pad=0.1)
-    plt.subplots_adjust(top=0.62)
-    plt.savefig(args.output.name)
+    fig.tight_layout(pad=0.1)
+    fig.subplots_adjust(top=0.7, hspace=0.12)
+    fig.savefig(args.output.name)
     plt.close()
 
 

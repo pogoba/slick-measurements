@@ -1,7 +1,7 @@
 .PHONY: repl
 
-OUT_DIR := ./pdfs/out26-output7-mem
-DATA := ./data/out26-output7-mem
+OUT_DIR := ./pdfs/out27-output7-mem
+DATA := ./data/out27-output7-mem
 ROOT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 PYARGS :=
 PAPER_FIGURES := app-throughput.pdf chain-scalability.pdf microbenchmarks.pdf packet-overhead.pdf

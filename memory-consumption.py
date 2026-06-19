@@ -165,17 +165,17 @@ def main():
     )
 
     # Reference lines: physical server memory and CVM key limit
-    ax.axhline(991, color="red", linestyle="-", linewidth=1)
-    ax.text(5, 991, "Server memory capacity", color="red",
-            fontsize=8, va="bottom", ha="left")
+    ax.axhline(956, color="red", linestyle="-", linewidth=1)
+    ax.text(5, 940, "Available RAM", color="red",
+            va="top", ha="left")
     ax.axvline(512, color="red", linestyle="-", linewidth=1)
     ax.text(500, 0.5, "Max. nr. of\nCVM keys", color="red",
-            fontsize=8, va="bottom", ha="right",
+            va="bottom", ha="right",
             transform=ax.get_xaxis_transform())
 
     ax.set_xticks(INSTANCE_TICKS)
     ax.set_xlim(left=0)
-    ax.set_ylim(bottom=0, top=1100)
+    ax.set_ylim(bottom=0)
 
     ax.set_xlabel('Instances')
     ax.set_ylabel('Memory (GiB)')
