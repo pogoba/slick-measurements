@@ -96,14 +96,14 @@ STEP_ORDER = [
     'Invoke',
 ]
 
-YLABEL = 'Startup [ms]'
+YLABEL = 'Startup [s]'
 XLABEL = 'System'
 
 # Broken y-axis: the lower half zooms into [0, SPLIT_LOW] so the small systems
 # (Gramine, Kata, ...) are readable; the upper half shows [SPLIT_HIGH, max] to
-# keep the tall VM/CVM bars in view.
-SPLIT_LOW = 400
-SPLIT_HIGH = 400
+# keep the tall VM/CVM bars in view. Units are seconds.
+SPLIT_LOW = 0.4
+SPLIT_HIGH = 0.4
 
 def map_hue(df_hue, hue_map):
     return df_hue.apply(lambda row: hue_map.get(str(row), row))
@@ -200,6 +200,8 @@ def main():
     # Sum phases sharing a label within a sample, then average over samples
     per_sample = data.groupby(['system', 'sample', 'step'])['time_ms'].sum().reset_index()
     df = per_sample.groupby(['system', 'step'])['time_ms'].mean().reset_index()
+    # Report startup durations in seconds rather than milliseconds.
+    df['time_ms'] = df['time_ms'] / 1000.0
 
     systems = [s for s in SYSTEM_ORDER if s in df['system'].unique()]
     # Order stack segments by overall magnitude so the smallest portions end up
@@ -282,7 +284,8 @@ def main():
     for i, name in enumerate(system_map[s] for s in systems):
         total = totals[name]
         target = ax_top if total > SPLIT_LOW else ax_bottom
-        target.annotate(f"{total:.1f}", xy=(i, total), xytext=(0, 2),
+        label = f"{total:.1f}" if total >= 1 else f"{total:.2g}"
+        target.annotate(label, xy=(i, total), xytext=(0, 2),
                         textcoords="offset points", ha="center", va="bottom")
 
     ax_top.text(
