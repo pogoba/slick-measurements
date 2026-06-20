@@ -147,6 +147,7 @@ memory-consumption.pdf:
 		--1-name "VM" --1 $(DATA)/mem_vm_*_rep*.log \
 		--2-name "Kata" --2 $(DATA)/mem_kata_*_rep*.log \
 		--3-name "CVM" --3 $(DATA)/mem_cvm_*_rep*.log \
+		--4-name "Slick VNFlets" --4 $(DATA)/vm_*.memory
 
 startup-time.pdf:
 	python3 $(PYARGS) startup-time.py \

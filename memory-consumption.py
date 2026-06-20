@@ -32,6 +32,44 @@ system_map = {
 # Instance counts we want to label on the x axis
 INSTANCE_TICKS = [1, 100, 200, 300, 400, 500, 600, 700]
 
+# Page size used to convert the SVSM trustlet page counts (.memory files) to bytes.
+PAGE_SIZE = 4096
+
+
+def parse_memory_file(path):
+    """Parse an SVSM '.memory' file into a dict of TRUSTLET_* -> int."""
+    vals = {}
+    with open(path) as fh:
+        for line in fh:
+            m = search(r"(TRUSTLET_[A-Z_]+)\s+(\d+)", line)
+            if m:
+                vals[m.group(1)] = int(m.group(2))
+    return vals
+
+
+def slick_vnflet_frame(name, files, instances):
+    """Model the "Slick VNFlets" baseline from SVSM '.memory' page stats.
+
+    Memory for N instances is `priv_avg + N * unpriv_avg` pages, where each
+    average sums the COW and non-COW pages of the (un)privileged trustlet.
+    Per-trustlet averages are themselves averaged across all provided files.
+    """
+    priv, unpriv = [], []
+    for fh in files:
+        v = parse_memory_file(fh.name)
+        priv.append(v["TRUSTLET_PAGES_AVG_COW_PRIV"]
+                    + v["TRUSTLET_PAGES_AVG_NON_COW_PRIV"])
+        unpriv.append(v["TRUSTLET_PAGES_AVG_COW_UNPRIV"]
+                      + v["TRUSTLET_PAGES_AVG_NON_COW_UNPRIV"])
+    priv_avg = float(np.mean(priv))
+    unpriv_avg = float(np.mean(unpriv))
+
+    df = pd.DataFrame({"instances": list(instances)})
+    df["bytes"] = (priv_avg + df["instances"] * unpriv_avg) * PAGE_SIZE
+    df["system"] = name
+    df["memory_gib"] = df["bytes"] / (1024 ** 3)
+    return df
+
 
 def setup_parser():
     parser = argparse.ArgumentParser(
@@ -103,6 +141,9 @@ def main():
     # --<color>-name. Logs report cumulative memory (bytes) per instance count.
     frames = []
     systems = []
+    # ".memory" baselines (e.g. Slick VNFlets) are modelled, not read as CSVs;
+    # defer them until we know the instance range covered by the other systems.
+    baselines = []
     for color in COLORS:
         files = args.__dict__.get(color)
         if not files:
@@ -110,6 +151,10 @@ def main():
         name = args.__dict__.get(f"{color}_name", color)
         if isinstance(name, list):
             name = " ".join(name)
+        systems.append(name)
+        if all(fh.name.endswith(".memory") for fh in files):
+            baselines.append((name, files))
+            continue
         measurements = pd.concat(
             [pd.read_csv(fh.name) for fh in files if getsize(fh.name) > 0]
         )
@@ -118,7 +163,15 @@ def main():
         # bytes -> GiB for a readable axis
         df["memory_gib"] = df["bytes"] / (1024 ** 3)
         frames.append(df)
-        systems.append(name)
+
+    # Span the modelled baselines over the same instance counts as the measured
+    # systems (fall back to the labelled ticks if no CSV systems are present).
+    if frames:
+        instances = sorted(pd.concat(frames)["instances"].unique())
+    else:
+        instances = INSTANCE_TICKS
+    for name, files in baselines:
+        frames.append(slick_vnflet_frame(name, files, instances))
 
     df = pd.concat(frames, ignore_index=True)
 
@@ -153,7 +206,7 @@ def main():
 
     # Position the legend outside the plot area
     sns.move_legend(ax, "upper center", bbox_to_anchor=(0.4, 1.2),
-                    ncol=3, title=None, frameon=False)
+                    ncol=2, title=None, frameon=False)
 
     ax.annotate(
         "↓ Lower is better", # or ↓ ← ↑ →
