@@ -69,7 +69,7 @@ def build_slick_systems(data):
     # existing "Runtime"/"Invoke" step labels.
     systems = {
         'slick': [(step, t) for step, t in cvm.items()] + [('DPDK', iomgr['dpdk'])],
-        'zygote': [('Runtime', iomgr['zygote'])],
+        'zygote': [('Runtime', iomgr['zygote'])] + [('DPDK', iomgr['dpdk'])],
         'trustlet': [('Invoke', iomgr[IOMGR_REMAINING].sum())],
     }
 
@@ -89,9 +89,9 @@ def build_slick_systems(data):
 # system's bar stacks in chronological order.
 STEP_ORDER = [
     'VMM (QEMU)',
-    'Firmware (OVMF)',
-    'OS/Guest-OS',
-    'VMM+OVMF+OS',
+    'Firmware',
+    'Guest OS',
+    'Other',  # was 'VMM+OVMF+OS'
     'Runtime',
     'Invoke',
 ]
@@ -103,7 +103,7 @@ XLABEL = 'System'
 # (Gramine, Kata, ...) are readable; the upper half shows [SPLIT_HIGH, max] to
 # keep the tall VM/CVM bars in view. Units are seconds.
 SPLIT_LOW = 0.4
-SPLIT_HIGH = 0.4
+SPLIT_HIGH = 1
 
 def map_hue(df_hue, hue_map):
     return df_hue.apply(lambda row: hue_map.get(str(row), row))
@@ -194,7 +194,13 @@ def main():
     log("Preparing plotting data")
     # Kata's "Early runtime" is a runtime phase like "Runtime"; merge the two
     # to keep the legend compact (totals are preserved).
-    data['step'] = data['step'].replace({'Early runtime': 'Runtime'})
+    data['step'] = data['step'].replace({
+        'Early runtime': 'Runtime',
+        'Firmware (OVMF)': 'Firmware',
+        'OS/Guest-OS': 'Guest OS',
+        'VMM+OVMF+OS': 'Other',
+        'Attestation': 'Attest',
+    })
     # Add the CVM-based Slick systems built from iomgr's startup phases.
     data = build_slick_systems(data)
     # Sum phases sharing a label within a sample, then average over samples
@@ -258,7 +264,7 @@ def main():
     sns.move_legend(
         ax_top, "upper center",
         bbox_to_anchor=(.5, 1.0), bbox_transform=fig.transFigure,
-        ncol=2, title=None, frameon=False,
+        ncol=3, title=None, frameon=False, columnspacing=0.6,
     )
     # rotate the system labels (like network-performance.pdf) so they fit at the
     # default font size without overlapping
@@ -286,7 +292,7 @@ def main():
         target = ax_top if total > SPLIT_LOW else ax_bottom
         label = f"{total:.1f}" if total >= 1 else f"{total:.2g}"
         target.annotate(label, xy=(i, total), xytext=(0, 2),
-                        textcoords="offset points", ha="center", va="bottom")
+                        textcoords="offset points", ha="center", va="bottom", fontsize=7)
 
     ax_top.text(
         0.03, 0.95, "↓ Lower is better", # or ↓ ← ↑ →
@@ -304,7 +310,7 @@ def main():
 
     fig.tight_layout(pad=0.1)
     # widen the left margin so the y-axis label clears the tick numbers
-    fig.subplots_adjust(top=0.55, hspace=0.12, left=0.23, right=0.98)
+    fig.subplots_adjust(top=0.7, hspace=0.12, left=0.23, right=0.98)
     fig.savefig(args.output.name)
     plt.close()
 
