@@ -212,7 +212,7 @@ def main():
     for i, bar in enumerate(ax.patches):
         bar.set_hatch(hatches[i % len(hatches)])
     for container in ax.containers:
-        ax.bar_label(container, fmt='%.1f', padding=5)
+        ax.bar_label(container, fmt='%.1f', padding=6, fontsize=8)
 
     # sns.add_legend(
     #         # bbox_to_anchor=(0.5, 0.77),

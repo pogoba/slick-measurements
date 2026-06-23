@@ -204,8 +204,10 @@ def main():
 
     rename_legend_labels(ax, LEGEND_MAP)
 
-    # Position the legend outside the plot area
-    sns.move_legend(ax, "upper center", bbox_to_anchor=(0.4, 1.2),
+    # Position the legend above the plot, anchored to the figure so the two
+    # rows clear the axes (the space is reserved via subplots_adjust below).
+    sns.move_legend(ax, "upper center", bbox_to_anchor=(0.5, 1.0),
+                    bbox_transform=fig.transFigure,
                     ncol=2, title=None, frameon=False)
 
     ax.annotate(
@@ -235,9 +237,12 @@ def main():
 
     # Adjust layout and save
     fig.tight_layout(pad=0.03)
-    # fig.subplots_adjust(top=0.8)
+    # reserve room at the top for the two-row legend
+    fig.subplots_adjust(top=0.8)
     fig.savefig(args.output.name)
     plt.close()
+
+    print(f"Slick VNFlets fit 700 VNFs into {float(df[(df['system'] == 'Slick VNFlets') & (df['instances'] == 700)]['memory_gib'])} GiB")
 
 
 if __name__ == '__main__':
