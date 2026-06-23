@@ -1,7 +1,8 @@
 .PHONY: repl
 
-OUT_DIR := ./pdfs/out29-output7-mem-startup
-DATA := ./data/out29-output7-mem-startup
+NAME := out30-output6v2
+OUT_DIR := ./pdfs/$(NAME)
+DATA := ./data/$(NAME)
 ROOT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 PYARGS :=
 PAPER_FIGURES := app-throughput.pdf chain-scalability.pdf microbenchmarks.pdf packet-overhead.pdf
@@ -122,12 +123,13 @@ network-performance.pdf:
 		--1-name "VM" --1 $(DATA)/iperf_haltpoll_forward_rep*.log \
 		--2-name "swiotlb" --2 $(DATA)/iperf_swiotlb_forward_rep*.log \
 		--3-name "vhost" --3 $(DATA)/iperf_vhost_forward_rep*.log \
-		--4-name "snp" --4 $(DATA)/iperf_snp_forward_rep*.log \
-		--5-name "snp-vhost" --5 $(DATA)/iperf_snp_vhost_forward_rep*.log \
-		--6-name "snp-ipoll" --6 $(DATA)/iperf_poll_forward_rep*.log \
-		--7-name "snp-vhost-ipoll" --7 $(DATA)/iperf_poll_vhost_forward_rep*.log \
-		--8-name "snp-hpoll" --8 $(DATA)/iperf_haltpoll_forward_rep*.log \
-		--9-name "vhost-user" --9 $(DATA)/iperf_vhost_user_forward_rep*.log \
+		--4-name "vhost-swiotlb" --4 $(DATA)/iperf_vhost_swiotlb_forward_rep*.log \
+		--5-name "snp" --5 $(DATA)/iperf_snp_forward_rep*.log \
+		--6-name "snp-vhost" --6 $(DATA)/iperf_snp_vhost_forward_rep*.log \
+		--7-name "snp-ipoll" --7 $(DATA)/iperf_poll_forward_rep*.log \
+		--8-name "snp-vhost-ipoll" --8 $(DATA)/iperf_poll_vhost_forward_rep*.log \
+		--9-name "snp-hpoll" --9 $(DATA)/iperf_haltpoll_forward_rep*.log \
+		--10-name "vhost-user" --10 $(DATA)/iperf_vhost_user_forward_rep*.log \
 
 
 message-size.pdf:

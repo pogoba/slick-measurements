@@ -214,6 +214,28 @@ def main():
     for container in ax.containers:
         ax.bar_label(container, fmt='%.1f', padding=6, fontsize=8)
 
+    # arch arrow from the vhost bar to the vhost-swiotlb bar
+    vhost_bar = ax.patches[variants.index("vhost")]
+    swiotlb_bar = ax.patches[variants.index("vhost-swiotlb")]
+    vhost_h = vhost_bar.get_height()
+    swiotlb_h = swiotlb_bar.get_height()
+    nic_decrease = (vhost_h - swiotlb_h) / vhost_h * 100
+    arrow_start = (vhost_bar.get_x() + vhost_bar.get_width() / 2, vhost_h + 6)
+    arrow_end = (swiotlb_bar.get_x() + swiotlb_bar.get_width() / 2, swiotlb_h + 6)
+    ax.annotate(
+        "",
+        xy=arrow_end,
+        xytext=arrow_start,
+        arrowprops=dict(arrowstyle="->", color="navy", lw=1.5,
+                        connectionstyle="arc3,rad=-0.6"),
+    )
+    ax.text(
+        (arrow_start[0] + arrow_end[0]) / 2 + 0.10,
+        (arrow_start[1] + arrow_end[1]) / 2 + 5,
+        f"Bounce\nbuffer",
+        ha="center", va="bottom", color="navy", # weight="bold",
+    )
+
     # sns.add_legend(
     #         # bbox_to_anchor=(0.5, 0.77),
     #         loc='right',
