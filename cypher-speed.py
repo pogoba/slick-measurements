@@ -234,15 +234,20 @@ def main():
         # Budget lines as vertical annotations. Place the label on the side of
         # the line with more room so it never runs off the panel.
         for label, value in BUDGETS[size].items():
-            ax.axvline(value, color='black',
+            ax.axvline(value, color='darkblue',
                        linestyle=budget_styles.get(label, '-'),
                        linewidth=1.2, zorder=3)
             on_right = value > 0.65 * right
+            ha = 'right' if on_right else 'left'
+            dx = -3 if on_right else 3
+            # nudge the 100 Gbit/s label slightly left to clear the 10 Gbit/s one
+            if label == "100 Gbit/s":
+                dx -= 4
             ax.annotate(
                 label,
-                xy=(value, 0.0), xycoords=('data', 'axes fraction'),
-                xytext=(-3 if on_right else 3, 2), textcoords='offset points',
-                ha='right' if on_right else 'left',
+                xy=(value, 1.0), xycoords=('data', 'axes fraction'),
+                xytext=(dx, 2), textcoords='offset points',
+                ha=ha,
                 va='bottom', fontsize='x-small', color='black',
             )
 
