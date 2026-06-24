@@ -188,10 +188,10 @@ def main():
     df['cipher'] = pd.Categorical(df['cipher'], CIPHERS)
 
     log("Preparing plotting data")
-    # Two side-by-side panels (one per packet size). The y-axes differ by an
-    # order of magnitude, so they are NOT shared.
+    # Two stacked panels (one per packet size) with horizontal bars. The
+    # value axes differ by an order of magnitude, so they are NOT shared.
     fig, axes = plt.subplots(
-        1, len(PACKET_SIZES), sharey=False,
+        len(PACKET_SIZES), 1, sharex=False,
         figsize=(args.width, args.height),
     )
     if args.title:
@@ -208,12 +208,12 @@ def main():
         sub = df[df['size'] == size]
         ax.set_axisbelow(True)
         if not args.slides:
-            ax.grid(axis='y')
+            ax.grid(axis='x')
 
         sns.barplot(
             data=sub,
-            x='cipher',
-            y='nsec',
+            y='cipher',
+            x='nsec',
             order=CIPHERS,
             hue='cipher',
             hue_order=CIPHERS,
@@ -225,39 +225,38 @@ def main():
         for bar, cipher in zip(ax.patches, CIPHERS):
             bar.set_hatch(cipher_hatch[cipher])
 
-        # Budget lines as horizontal annotations.
+        ax.set_ylabel("")
+        ax.set_xlabel(f"{size} {YLABEL}")
+        # headroom right of the longest of bars and budget lines
+        right = max(sub['nsec'].max(), max(BUDGETS[size].values()))
+        ax.set_xlim(0, right * 1.12)
+
+        # Budget lines as vertical annotations. Place the label on the side of
+        # the line with more room so it never runs off the panel.
         for label, value in BUDGETS[size].items():
-            ax.axhline(value, color='black',
+            ax.axvline(value, color='black',
                        linestyle=budget_styles.get(label, '-'),
                        linewidth=1.2, zorder=3)
+            on_right = value > 0.65 * right
             ax.annotate(
                 label,
-                xy=(1.0, value), xycoords=('axes fraction', 'data'),
-                xytext=(-2, 1), textcoords='offset points',
-                ha='right', va='bottom', fontsize='x-small', color='black',
+                xy=(value, 0.0), xycoords=('data', 'axes fraction'),
+                xytext=(-3 if on_right else 3, 2), textcoords='offset points',
+                ha='right' if on_right else 'left',
+                va='bottom', fontsize='x-small', color='black',
             )
 
-        ax.set_title(size)
-        ax.set_xlabel("")
-        ax.set_ylabel(YLABEL)
-        # headroom above the tallest of bars and budget lines
-        top = max(sub['nsec'].max(), max(BUDGETS[size].values()))
-        ax.set_ylim(0, top * 1.18)
-        ax.tick_params(axis='x', rotation=25)
-        for tick in ax.get_xticklabels():
-            tick.set_ha('right')
-
-    if args.slides:
-        axes[0].annotate(
-            "↓ Lower is better",
-            xycoords="axes points",
-            xy=(0, 0),
-            xytext=(-4, -42),
-            color="navy",
-            weight="bold",
-        )
+    axes[-1].annotate(
+        "← Lower is better",
+        xycoords="axes points",
+        xy=(0, 0),
+        xytext=(-104, -28),
+        color="navy",
+        weight="bold",
+    )
 
     fig.tight_layout(pad=0.4)
+    fig.subplots_adjust(hspace=1.0)
     fig.savefig(args.output.name)
     plt.close()
 
