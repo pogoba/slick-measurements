@@ -20,13 +20,36 @@ import operator
 # resource on how to do stackplots:
 # https://stackoverflow.com/questions/59038979/stacked-bar-chart-in-seaborn
 
-PLOTTING_NAME="microbenchmarks"
+PLOTTING_NAME="cypher-speed"
 DEFAULT_OUTPUT=f"{PLOTTING_NAME}.pdf"
 
 hatches = _hatches.copy()
 hatches[0] = _hatches[6]
 hatches[6] = _hatches[2]
 hatches[2] = _hatches[0]
+
+# Cipher de/encryption cost per packet [ns], measured for two packet sizes.
+CIPHERS = ["AES-256-GCM", "AES-256-CBC-SHA1", "ChaCha20-Poly1305"]
+CIPHER_NS = {
+    "64B": {
+        "AES-256-GCM": 70.9,
+        "AES-256-CBC-SHA1": 132.4,
+        "ChaCha20-Poly1305": 205.5,
+    },
+    "1500B": {
+        "AES-256-GCM": 674.8,
+        "AES-256-CBC-SHA1": 371.5,
+        "ChaCha20-Poly1305": 1293.5,
+    },
+}
+
+# Per-packet time budgets [ns] to sustain line rate, drawn as horizontal lines.
+BUDGETS = {
+    "64B": {"10 Gbit/s": 67.2, "100 Gbit/s": 6.7},
+    "1500B": {"10 Gbit/s": 1216.0, "100 Gbit/s": 121.6},
+}
+
+PACKET_SIZES = ["64B", "1500B"]
 
 COLORS = [ str(i) for i in range(20) ]
 # COLORS = mcolors.CSS4_COLORS.keys()
@@ -59,8 +82,8 @@ system_map = {
         'ebpf-linuxvm': 'XDP',
         }
 
-YLABEL = 'Processing time [ns]'
-XLABEL = 'System'
+YLABEL = 'De/encryption [ns]'
+XLABEL = 'Cipher'
 
 # Broken y-axis: the lower half zooms into [0, SPLIT] so the smaller
 # contributors (and the batched bars) are readable; the upper half shows
@@ -156,134 +179,85 @@ def main():
     args = parse_args(parser)
 
     log("Using hardcoded data")
-    # Hardcoded data to replace parse_data(df) and CSV reading
+    # Build a tidy frame: one row per (packet size, cipher).
     rows = []
-    # Data for each system and contributor (in nanoseconds)
-
-    # VMs
-    rows.append(['VMs', 'VM exit', 4000])
-    rows.append(['VMs', 'De/encryption', 0])  # Not applicable for VMs
-    rows.append(['VMs', 'Bounce buffer', 0])  # Not applicable for VMs
-    rows.append(['VMs', 'Memory copy', 207])
-    rows.append(['VMs', 'Other', 220])
-
-    # CVMs
-    rows.append(['CVMs', 'VM exit', 4000])
-    rows.append(['CVMs', 'De/encryption', 623 ])
-    rows.append(['CVMs', 'Bounce buffer', 207])
-    rows.append(['CVMs', 'Memory copy', 207])
-    rows.append(['CVMs', 'Other', 220])
-
-    # VMs \n(batched)
-    rows.append(['VMs (batched)', 'VM exit', 4000 / 32])
-    rows.append(['VMs (batched)', 'De/encryption', 0])  # Not applicable for VMs
-    rows.append(['VMs (batched)', 'Bounce buffer', 0])  # Not applicable for VMs
-    rows.append(['VMs (batched)', 'Memory copy', 207])
-    rows.append(['VMs (batched)', 'Other', 220 / 32])
-
-    # CVMs \n(batched)
-    rows.append(['CVMs (batched)', 'VM exit', 4000 / 32])
-    rows.append(['CVMs (batched)', 'De/encryption', 623 ])
-    rows.append(['CVMs (batched)', 'Bounce buffer', 207])
-    rows.append(['CVMs (batched)', 'Memory copy', 207])
-    rows.append(['CVMs (batched)', 'Other', 220 / 32])
-
-    data = pd.DataFrame(rows, columns=['system', 'label', 'nsec'])
+    for size in PACKET_SIZES:
+        for cipher in CIPHERS:
+            rows.append([size, cipher, CIPHER_NS[size][cipher]])
+    df = pd.DataFrame(rows, columns=['size', 'cipher', 'nsec'])
+    df['cipher'] = pd.Categorical(df['cipher'], CIPHERS)
 
     log("Preparing plotting data")
-    Contributors = [ "VM exit", "De/encryption", "Bounce buffer", "Memory copy", "Other" ]
-    data = data[data['label'].isin(Contributors)]
-    data['Contributor'] = data['label']
-    data['restart_s'] = data['nsec']
-    data = data[['system', 'Contributor', 'restart_s']]
-    df = data.groupby(['system', 'Contributor'])['restart_s'].mean().reset_index()
-    # df['restart_s'] = df['restart_s']/1000000
-
-    # Set categorical order for systems
-    df['system'] = pd.Categorical(df['system'], ['VMs', 'CVMs', 'VMs (batched)', 'CVMs (batched)'])
-    # Rename VMs to vms
-    df['system'] = df['system'].cat.rename_categories({'VMs (batched)': 'VMs\n(batched) ', 'CVMs (batched)': 'CVMs\n (batched)'})
-    # Broken y-axis: stack the same plot on two axes and zoom each differently.
-    fig, (ax_top, ax_bottom) = plt.subplots(
-        2, 1, sharex=True, figsize=(args.width, args.height),
-        gridspec_kw={'height_ratios': [1, 1]},
+    # Two side-by-side panels (one per packet size). The y-axes differ by an
+    # order of magnitude, so they are NOT shared.
+    fig, axes = plt.subplots(
+        1, len(PACKET_SIZES), sharey=False,
+        figsize=(args.width, args.height),
     )
     if args.title:
-        ax_top.set_title(args.title)
+        fig.suptitle(args.title)
 
-    hue_order = ['VM exit', 'De/encryption', 'Bounce buffer', 'Memory copy', 'Other']
-    for ax in (ax_top, ax_bottom):
+    # one stable color/hatch per cipher across both panels
+    palette = dict(zip(CIPHERS, sns.color_palette("deep", len(CIPHERS))))
+    cipher_hatch = {cipher: hatches[i % len(hatches)]
+                    for i, cipher in enumerate(CIPHERS)}
+    # line styles for the budget annotations, shared across panels
+    budget_styles = {"10 Gbit/s": "--", "100 Gbit/s": ":"}
+
+    for ax, size in zip(axes, PACKET_SIZES):
+        sub = df[df['size'] == size]
         ax.set_axisbelow(True)
         if not args.slides:
-            ax.grid()
-        sns.histplot(
-                   data=df,
-                   x='system',
-                   weights='restart_s',
-                   hue="Contributor",
-                   hue_order=hue_order,
-                   multiple="stack",
-                   palette="deep",
-                   edgecolor="dimgray",
-                   shrink=0.8,
-                   legend=(ax is ax_top),
-                   ax=ax,
-                   )
+            ax.grid(axis='y')
 
-    # lower half zooms in, upper half shows the bar tops
-    total_max = df.groupby('system', observed=True)['restart_s'].sum().max()
-    ax_bottom.set_ylim(0, SPLIT)
-    ax_top.set_ylim(SPLIT, total_max * 1.05)
+        sns.barplot(
+            data=sub,
+            x='cipher',
+            y='nsec',
+            order=CIPHERS,
+            hue='cipher',
+            hue_order=CIPHERS,
+            palette=palette,
+            edgecolor="dimgray",
+            legend=False,
+            ax=ax,
+        )
+        for bar, cipher in zip(ax.patches, CIPHERS):
+            bar.set_hatch(cipher_hatch[cipher])
 
-    # hide the facing spines and draw diagonal break marks across the cut
-    ax_top.spines['bottom'].set_visible(False)
-    ax_bottom.spines['top'].set_visible(False)
-    ax_top.tick_params(axis='x', which='both', bottom=False, labelbottom=False)
+        # Budget lines as horizontal annotations.
+        for label, value in BUDGETS[size].items():
+            ax.axhline(value, color='black',
+                       linestyle=budget_styles.get(label, '-'),
+                       linewidth=1.2, zorder=3)
+            ax.annotate(
+                label,
+                xy=(1.0, value), xycoords=('axes fraction', 'data'),
+                xytext=(-2, 1), textcoords='offset points',
+                ha='right', va='bottom', fontsize='x-small', color='black',
+            )
 
-    d = .5  # slope of the diagonal break marks
-    break_kwargs = dict(marker=[(-1, -d), (1, d)], markersize=8,
-                        linestyle="none", color='dimgray', mec='dimgray',
-                        mew=1, clip_on=False)
-    ax_top.plot([0, 1], [0, 0], transform=ax_top.transAxes, **break_kwargs)
-    ax_bottom.plot([0, 1], [1, 1], transform=ax_bottom.transAxes, **break_kwargs)
+        ax.set_title(size)
+        ax.set_xlabel("")
+        ax.set_ylabel(YLABEL)
+        # headroom above the tallest of bars and budget lines
+        top = max(sub['nsec'].max(), max(BUDGETS[size].values()))
+        ax.set_ylim(0, top * 1.18)
+        ax.tick_params(axis='x', rotation=25)
+        for tick in ax.get_xticklabels():
+            tick.set_ha('right')
 
-    sns.move_legend(
-        ax_top, "upper center",
-        bbox_to_anchor=(.5, 1.0), bbox_transform=fig.transFigure,
-        ncol=2, title=None, frameon=False,
-    )
-
-    color_hatch_map = dict()
-    # Fix the legend hatches
-    for i, legend_patch in enumerate(ax_top.get_legend().get_patches()):
-        hatch = hatches[i % len(hatches)]
-        legend_patch.set_hatch(f"{hatch}{hatch}")
-        color_hatch_map[legend_patch.get_facecolor()] = hatch
-
-    for ax in (ax_top, ax_bottom):
-        for bar in ax.patches:
-            hatch = color_hatch_map.get(bar.get_facecolor())
-            if hatch is not None:
-                bar.set_hatch(hatch)
-
-    if (args.slides):
-        ax_bottom.annotate(
-            "↓ Lower is better", # or ↓ ← ↑ →
+    if args.slides:
+        axes[0].annotate(
+            "↓ Lower is better",
             xycoords="axes points",
             xy=(0, 0),
-            xytext=(-4, -28),
+            xytext=(-4, -42),
             color="navy",
             weight="bold",
         )
 
-    ax_bottom.set_xlabel(XLABEL)
-    ax_top.set_ylabel("")
-    # use a regular axis label (default 'medium' size) centered across both panels
-    ax_bottom.set_ylabel(YLABEL)
-    ax_bottom.yaxis.set_label_coords(-0.18, 1.0)
-
-    fig.tight_layout(pad=0.1)
-    fig.subplots_adjust(top=0.7, hspace=0.12, left=0.2)
+    fig.tight_layout(pad=0.4)
     fig.savefig(args.output.name)
     plt.close()
 

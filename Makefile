@@ -156,3 +156,9 @@ startup-time.pdf:
 		-o $(OUT_DIR)/startup-time.pdf \
 		--width $(WIDTH3) --height 2.5 \
 		--1-name "all" --1 $(DATA)/startup.csv
+
+cypher-speed.pdf:
+	python3 $(PYARGS) cypher-speed.py \
+		-o $(OUT_DIR)/cypher-speed.pdf \
+		--width $(WIDTH3) --height 2.5 \
+		--1 ./flake.nix
