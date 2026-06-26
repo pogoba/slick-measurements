@@ -221,6 +221,13 @@ def main():
 
     df = pd.DataFrame(rows, columns=['system', 'Contributor', 'restart_s'])
 
+    # Sort the smallest stack portions to the bottom so they stay visible on the
+    # log scale. seaborn's histplot stacks the *last* hue_order entry at the
+    # bottom, so order contributors largest -> smallest (largest on top).
+    contributor_order = list(
+        df.groupby('Contributor')['restart_s'].sum().sort_values(ascending=False).index
+    )
+
     # Set categorical order for bars
     df['system'] = pd.Categorical(df['system'], bar_order)
     # Plot using Seaborn
@@ -229,7 +236,7 @@ def main():
                x='system',
                weights='restart_s',
                hue="Contributor",
-               hue_order = Contributors,
+               hue_order = contributor_order,
                multiple="stack",
                # palette=palette,
                palette="deep",
