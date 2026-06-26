@@ -63,9 +63,9 @@ YLABEL = 'Comm. time [us]'
 XLABEL = ''
 
 # time spent in the VNFlet network stack (hardcoded for now)
-VNFLET_STACK_SHARE = 0.0098
+VNFLET_STACK_SHARE = 0.0098 # re-run the iomgrMicrobenchmark, compiling iomgr_trustlet.c with -DMEASURE_PER_PACKET=1, finding the result on the host at `strings /tmp/serial.log | grep "Time per packet"`
 # extra stub driver share, only added to mirrorMicrobenchmark bars (hardcoded for now)
-STUB_DRIVER_SHARE = 0.5
+STUB_DRIVER_SHARE = 0.145 # re-run the mirrorMicrobenchmark, compiling mirror.c with -DMEASURE_PER_PACKET=1, sending SIGINT to mirror after the run to print the "Time per packet" to the mirror's stdout
 STUB_DRIVER_SYSTEM = 'mirrorMicrobenchmark'
 
 def map_hue(df_hue, hue_map):
@@ -159,7 +159,7 @@ def main():
     fig = plt.figure(figsize=(args.width, args.height))
     # fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
-    # ax.set_axisbelow(True)
+    ax.set_axisbelow(True)
     if args.title:
         plt.title(args.title)
     if not args.slides:
@@ -208,13 +208,14 @@ def main():
         # carve named segments out of the measured time; "Other" is the remainder
         # so that the stacked bar height stays the measured communication time.
         other = nspp
-        # vnflet = nspp * VNFLET_STACK_SHARE
-        vnflet = VNFLET_STACK_SHARE
-        other -= vnflet
-        rows.append([bar, 'VNFlet network stack', vnflet])
+        if "mirrorKniMicrobenchmark" not in systems[combo]:
+            # vnflet = nspp * VNFLET_STACK_SHARE
+            vnflet = VNFLET_STACK_SHARE
+            other -= vnflet
+            rows.append([bar, 'VNFlet network stack', vnflet])
         if STUB_DRIVER_SYSTEM in systems[combo]:
-            stub = nspp * STUB_DRIVER_SHARE
-            # stub = STUB_DRIVER_SHARE
+            # stub = nspp * STUB_DRIVER_SHARE
+            stub = STUB_DRIVER_SHARE
             other -= stub
             rows.append([bar, 'Stub driver', stub])
         rows.append([bar, 'Other', other])
