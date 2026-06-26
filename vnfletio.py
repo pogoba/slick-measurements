@@ -63,7 +63,7 @@ YLABEL = 'Comm. time [us]'
 XLABEL = ''
 
 # time spent in the VNFlet network stack (hardcoded for now)
-VNFLET_STACK_SHARE = 0.3
+VNFLET_STACK_SHARE = 0.0098
 # extra stub driver share, only added to mirrorMicrobenchmark bars (hardcoded for now)
 STUB_DRIVER_SHARE = 0.5
 STUB_DRIVER_SYSTEM = 'mirrorMicrobenchmark'
