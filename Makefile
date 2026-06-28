@@ -1,6 +1,6 @@
 .PHONY: repl
 
-NAME := out30-output6v2
+NAME := out31-output6v3
 OUT_DIR := ./pdfs/$(NAME)
 DATA := ./data/$(NAME)
 ROOT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
