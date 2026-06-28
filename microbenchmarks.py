@@ -237,6 +237,9 @@ def main():
             if "memory_workload" in arg_df.columns:
                 time_df = arg_df[arg_df["memory_workload"] == 0].copy()
                 mem_df = arg_df[arg_df["memory_workload"] > 0].copy()
+                # Facet (c) (memory workload throughput) uses 1500B packets only
+                if "pktsize" in mem_df.columns:
+                    mem_df = mem_df[mem_df["pktsize"] == 1500]
                 if not time_df.empty:
                     if "pktsize" in time_df.columns:
                         time_df["metric_type"] = "time_" + time_df["pktsize"].astype(int).astype(str) + "b"
@@ -280,6 +283,9 @@ def main():
                 if "memory_workload" in arg_df.columns:
                     time_df = arg_df[arg_df["memory_workload"] == 0].copy()
                     mem_df = arg_df[arg_df["memory_workload"] > 0].copy()
+                    # Facet (f) (memory workload latency) uses 1500B packets only
+                    if "pktsize" in mem_df.columns:
+                        mem_df = mem_df[mem_df["pktsize"] == 1500]
                     if not time_df.empty:
                         if "pktsize" in time_df.columns:
                             time_df["metric_type"] = "time_" + time_df["pktsize"].astype(int).astype(str) + "b"
