@@ -246,6 +246,13 @@ def main():
                 # Facet (c) (memory workload throughput) uses 1500B packets only
                 if "pktsize" in mem_df.columns:
                     mem_df = mem_df[mem_df["pktsize"] == 1500]
+                # include the idle baseline (0 memory accesses, 0 processing) as
+                # the x=0 datapoint of the memory facet
+                base_df = arg_df[(arg_df["memory_workload"] == 0)
+                                 & (arg_df["workload"] == 0)].copy()
+                if "pktsize" in base_df.columns:
+                    base_df = base_df[base_df["pktsize"] == 1500]
+                mem_df = pd.concat([base_df, mem_df])
                 if not time_df.empty:
                     if "pktsize" in time_df.columns:
                         time_df["metric_type"] = "time_" + time_df["pktsize"].astype(int).astype(str) + "b"
@@ -292,6 +299,13 @@ def main():
                     # Facet (f) (memory workload latency) uses 1500B packets only
                     if "pktsize" in mem_df.columns:
                         mem_df = mem_df[mem_df["pktsize"] == 1500]
+                    # include the idle baseline (0 memory accesses, 0 processing)
+                    # as the x=0 datapoint of the memory facet
+                    base_df = arg_df[(arg_df["memory_workload"] == 0)
+                                     & (arg_df["workload"] == 0)].copy()
+                    if "pktsize" in base_df.columns:
+                        base_df = base_df[base_df["pktsize"] == 1500]
+                    mem_df = pd.concat([base_df, mem_df])
                     if not time_df.empty:
                         if "pktsize" in time_df.columns:
                             time_df["metric_type"] = "time_" + time_df["pktsize"].astype(int).astype(str) + "b"
@@ -450,11 +464,11 @@ def main():
             verts, closed=True, facecolor="0.6", edgecolor="1.00",
             hatch="///", linewidth=0.0, alpha=0.4, zorder=1.8,
         ))
-        if "memory" in po:
-            cx = sum(v[0] for v in verts) / 2 * 0.98
-            cy = sum(v[1] for v in verts) / 3
+        if "1500" in po:
+            cx = sum(v[0] for v in verts) / 2 * 1.0
+            cy = sum(v[1] for v in verts) / 3 * 0.9
             ax.annotate(
-                "Batching\ninduced latency", xy=(cx, cy), ha="right", va="center",
+                "Batching", xy=(cx, cy), ha="right", va="center",
                 fontsize=9, style="italic", color="black", zorder=3,
             )
         ax.set_xlim(xlim)
