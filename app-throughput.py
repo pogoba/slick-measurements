@@ -360,6 +360,45 @@ def main():
         plt.ylim(bottom=0)
     else:
         plt.ylim(bottom=1)
+
+    # --- Theoretical cipher throughput ceiling per packet size --------------
+    # Cipher de/encryption cost [ns/packet] measured at 64B and 1500B (from
+    # cypher-speed.py); linearly interpolated for the intermediate sizes.
+    # Throughput ceiling [Mpps] = 1000 / ns_per_packet. Drawn as a short
+    # horizontal tick over each size's bar group; values above the y-axis are
+    # clamped to the top and marked with a "↑".
+    CIPHER_NS = {
+        "64B": {"AES-256-GCM": 70.9, "AES-256-CBC-SHA1": 132.4, "ChaCha20-Poly1305": 205.5},
+        "1500B": {"AES-256-GCM": 674.8, "AES-256-CBC-SHA1": 371.5, "ChaCha20-Poly1305": 1293.5},
+    }
+    CIPHERS = ["AES-256-GCM", "AES-256-CBC-SHA1", "ChaCha20-Poly1305"]
+    CIPHERS_MAP = {
+        "AES-256-GCM": "AES-GCM",
+        "AES-256-CBC-SHA1": "AES-CBC",
+        "ChaCha20-Poly1305": "ChaCha20"
+    }
+
+
+    def cipher_throughput_mpps(cipher, size_b):
+        a, b = CIPHER_NS["64B"][cipher], CIPHER_NS["1500B"][cipher]
+        ns = a + (b - a) / (1500 - 64) * (size_b - 64)  # interpolate ns/packet
+        return 1000.0 / ns
+
+    half_w = 0.42                       # half the categorical bar-group width
+    seg = 2 * half_w / len(CIPHERS)     # one sub-slot per cipher within a group
+    max_bar = ax.get_ylim()[1]           # autoscaled top driven by the measured bars
+    ax.set_ylim(top=max_bar * 2.5)      # scale to the tallest bar, not the cipher ceiling
+    for i, size_label in enumerate(size_order):
+        size_b = int(size_label)
+        for j, cipher in enumerate(CIPHERS):
+            y_true = cipher_throughput_mpps(cipher, size_b)
+            ax.hlines(y_true, i - half_w, i + half_w,
+                      color="black", lw=0.5, zorder=5)
+            ax.annotate(CIPHERS_MAP[cipher], xy=(i, y_true), xytext=(1, 1.5),
+                        textcoords="offset points", ha="center", va="bottom",
+                        # rotation=90,
+                        fontsize=6, color="black", zorder=6)
+
     # for container in ax.containers:
     #     ax.bar_label(container, fmt='%.0f')
 
