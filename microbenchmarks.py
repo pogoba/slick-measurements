@@ -4,6 +4,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import matplotlib.patches as mpatches
 import seaborn as sns
 import argparse
 from re import search
@@ -417,6 +418,31 @@ def main():
             if not facet_df.empty:
                 max_val = facet_df["y_value"].max()
                 grid.axes.flat[i].set_ylim(top=max_val * 1.1)
+
+    # Add a "Batching induced" wedge to the latency facets: a triangle from the
+    # origin out to the facet's right edge, between 100us and 150us. The apex is
+    # anchored at each facet's right edge so it stays on-scale regardless of the
+    # x-axis unit (ns for the time facets, kB for the memory facet).
+    for i, po in enumerate(plot_order):
+        if not po.startswith("latency_"):
+            continue
+        ax = grid.axes.flat[i]
+        xlim, ylim = ax.get_xlim(), ax.get_ylim()
+        x_right = xlim[1]
+        verts = [(0, 0), (x_right, 150), (x_right, 0)]
+        ax.add_patch(mpatches.Polygon(
+            verts, closed=True, facecolor="0.6", edgecolor="none",
+            alpha=0.4, zorder=1.8,
+        ))
+        if "memory" in po:
+            cx = sum(v[0] for v in verts) / 2
+            cy = sum(v[1] for v in verts) / 3
+            ax.annotate(
+                "Batching\ninduced latency", xy=(cx, cy), ha="right", va="center",
+                fontsize=6.5, style="italic", color="black", zorder=3,
+            )
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
 
     def rename_legend_labels(ax, label_map):
         if ax.get_legend() is not None:
