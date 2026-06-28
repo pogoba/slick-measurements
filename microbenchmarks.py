@@ -441,7 +441,11 @@ def main():
         ax = grid.axes.flat[i]
         xlim, ylim = ax.get_xlim(), ax.get_ylim()
         x_right = xlim[1]
-        verts = [(0, 0), (x_right, 150), (x_right, 0)]
+        if "memory" in po:
+            y_val = 1900 / 1000.0 * 32 * 2
+        else:
+            y_val = x_right / 1000.0 * 32 * 2
+        verts = [(0, 0), (x_right, y_val), (x_right, 0)]
         ax.add_patch(mpatches.Polygon(
             verts, closed=True, facecolor="0.6", edgecolor="none",
             alpha=0.4, zorder=1.8,
@@ -451,7 +455,7 @@ def main():
             cy = sum(v[1] for v in verts) / 3
             ax.annotate(
                 "Batching\ninduced latency", xy=(cx, cy), ha="right", va="center",
-                fontsize=6.5, style="italic", color="black", zorder=3,
+                fontsize=9, style="italic", color="black", zorder=3,
             )
         ax.set_xlim(xlim)
         ax.set_ylim(ylim)
@@ -489,8 +493,9 @@ def main():
         # label to the right of the right cap so it stays legible even when the
         # budget is a narrow sliver of the x-range (e.g. 67ns for 64B packets)
         ax.annotate(
-            "10G budget", xy=(budget + xspan * 0.05, y_arrow),
-            ha="left", va="center", fontsize=6.5, color="black",
+            "10G budget",
+            xy=( (budget + xspan * 0.05, y_arrow) if po == "throughput_time_64b" else (budget * 0.5, y_arrow * 1.2) ),
+            ha="left", va="center", fontsize=9, color="black",
             annotation_clip=False,
         )
 
