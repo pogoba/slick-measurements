@@ -69,6 +69,12 @@ grid_title_map = {
     'plot_order = latency_memory': '(f) Latency\n(memory workload)',
 }
 
+# Per-packet time budgets [ns] to sustain line rate, drawn as horizontal lines.
+BUDGETS = {
+    "64B": {"10 Gbit/s": 67.2, "100 Gbit/s": 6.7},
+    "1500B": {"10 Gbit/s": 1216.0, "100 Gbit/s": 121.6},
+}
+
 # Set global font size
 # plt.rcParams['font.size'] = 10  # Sets the global font size to 14
 # plt.rcParams['axes.labelsize'] = 10  # Sets axis label size
@@ -449,6 +455,44 @@ def main():
             )
         ax.set_xlim(xlim)
         ax.set_ylim(ylim)
+
+    # Draw the 10G per-packet processing-time budget as a horizontal |<--->|
+    # dimension arrow on the ns-axis throughput facets (a)/(b). The span 0->budget
+    # is the packet-processing time available to sustain 10 Gbit/s line rate.
+    # The memory facet (c) is skipped: its x-axis is in kB, not ns.
+    budget_facets = {
+        "throughput_time_64b": "64B",
+        "throughput_time_1500b": "1500B",
+    }
+    for i, po in enumerate(plot_order):
+        if po not in budget_facets:
+            continue
+        budget = BUDGETS[budget_facets[po]]["10 Gbit/s"]
+        ax = grid.axes.flat[i]
+        ymax = ax.get_ylim()[1]
+        xspan = ax.get_xlim()[1] - ax.get_xlim()[0]
+        y_arrow = ymax * 0.7
+        cap = ymax * 0.045
+        # ax.set_ylim(top=ymax * 1.16)  # headroom above the data for the annotation
+        # double-headed arrow spanning 0 -> budget
+        ax.annotate(
+            "", xy=(budget, y_arrow), xytext=(0, y_arrow),
+            annotation_clip=False,
+            arrowprops=dict(
+                arrowstyle=("-" if po == "throughput_time_64b" else "<->"),
+                color="black", lw=1.0),
+        )
+        # vertical end caps make it a |<--->| dimension arrow
+        for xc in (0, budget):
+            ax.plot([xc, xc], [y_arrow - cap, y_arrow + cap],
+                    color="black", lw=1.4, clip_on=False)
+        # label to the right of the right cap so it stays legible even when the
+        # budget is a narrow sliver of the x-range (e.g. 67ns for 64B packets)
+        ax.annotate(
+            "10G budget", xy=(budget + xspan * 0.05, y_arrow),
+            ha="left", va="center", fontsize=6.5, color="black",
+            annotation_clip=False,
+        )
 
     def rename_legend_labels(ax, label_map):
         if ax.get_legend() is not None:
