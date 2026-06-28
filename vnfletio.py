@@ -193,7 +193,7 @@ def main():
     # one bar per (display name, pktsize, batchsize); each bar is stacked into
     # the VNFlet network stack share and the remainder. mirrorMicrobenchmark
     # bars get an additional stub driver segment on top.
-    Contributors = [ "Stub driver", "VNFlet network stack", "Other" ]
+    Contributors = [ "Stub driver", "Network stack", "Other", "Context switches" ]
     rows = []
     bar_order = []
     grouped = raw_df.groupby(['sysname', 'pktsize', 'batchsize'])
@@ -212,22 +212,34 @@ def main():
             # vnflet = nspp * VNFLET_STACK_SHARE
             vnflet = VNFLET_STACK_SHARE
             other -= vnflet
-            rows.append([bar, 'VNFlet network stack', vnflet])
+            rows.append([bar, 'Network stack', vnflet])
         if STUB_DRIVER_SYSTEM in systems[combo]:
             # stub = nspp * STUB_DRIVER_SHARE
             stub = STUB_DRIVER_SHARE
             other -= stub
             rows.append([bar, 'Stub driver', stub])
+        if "Linux" == sysname:
+            stub = 7 # us, measured for table 4 simulation inputs
+            other -= stub
+            rows.append([bar, 'Context switches', stub])
+            stub = 0.035 * nspp
+            other -= stub
+            rows.append([bar, 'Network stack', stub])
         rows.append([bar, 'Other', other])
 
     df = pd.DataFrame(rows, columns=['system', 'Contributor', 'restart_s'])
 
-    # Sort the smallest stack portions to the bottom so they stay visible on the
-    # log scale. seaborn's histplot stacks the *last* hue_order entry at the
-    # bottom, so order contributors largest -> smallest (largest on top).
-    contributor_order = list(
-        df.groupby('Contributor')['restart_s'].sum().sort_values(ascending=False).index
-    )
+    # Static contributor order (top -> bottom). seaborn's histplot stacks the
+    # *last* hue_order entry at the bottom, so list contributors top to bottom.
+    contributor_order = [
+        "Other",
+        "Context switches",
+        "Stub driver",
+        "Network stack",
+    ]
+
+    # Reorder the data so each system's contributors occur in increasing order.
+    # df = df.sort_values(['system', 'restart_s']).reset_index(drop=True)
 
     # Set categorical order for bars
     df['system'] = pd.Categorical(df['system'], bar_order)
@@ -302,7 +314,7 @@ def main():
     #             )
     sns.move_legend(
         ax, "lower center",
-        bbox_to_anchor=(.5, 1.02), ncol=3, title=None, frameon=False,
+        bbox_to_anchor=(.5, 0.93), ncol=3, title=None, frameon=False,
     )
 
     color_hatch_map = dict()
@@ -367,7 +379,7 @@ def main():
     # fig.tight_layout(rect = (0, 0, 0, 0.1))
     # ax.set_position((0.1, 0.1, 0.5, 0.8))
     plt.tight_layout(pad=0.1)
-    plt.subplots_adjust(top=0.85)
+    plt.subplots_adjust(top=0.80)
     plt.savefig(args.output.name)
     plt.close()
 
