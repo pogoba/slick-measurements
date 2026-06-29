@@ -222,7 +222,7 @@ def main():
             stub = 7 # us, measured for table 4 simulation inputs
             other -= stub
             rows.append([bar, 'Context switches', stub])
-            stub = 0.035 * nspp
+            stub = 0.035 * nspp # %, measured by running mirrrorKniMicrobenchmark and looking at /proc/$(pgrep mirror)/stat at field index 13 (user time) and 14 (system time) and deviding them through each other to get 3.5% system time
             other -= stub
             rows.append([bar, 'Network stack', stub])
         rows.append([bar, 'Other', other])
