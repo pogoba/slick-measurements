@@ -67,6 +67,15 @@ hue_map = {
 YLABEL = 'Throughput [Mpps]'
 XLABEL = 'Packet size [B]'
 
+def ns2s(ns) -> float:
+    return ns / 1e9
+
+def pps2mpps(pps) -> float:
+    return pps / 1e6
+
+def nspp2mpps(nspp) -> float:
+    return pps2mpps(1 / ns2s(nspp))
+
 def map_hue(df_hue, hue_map):
     return df_hue.apply(lambda row: hue_map.get(str(row), row))
 
@@ -377,6 +386,14 @@ def main():
         "AES-256-CBC-SHA1": "AES-CBC",
         "ChaCha20-Poly1305": "ChaCha20"
     }
+    IPSEC_MAP = { # see *.ipsec files and take average of encrypt and decrypt: python3 ./pybench/measure_vm.py -vvv -b --system mirror --real_workload realProfiled --pktsize 64 128 256 512 1024 1500
+        64:   (764+ 757)/2,
+        128:  (900+ 870)/2,
+        256:  (1014+ 987)/2,
+        512:  (1075+ 1060)/2,
+        1024: (1442+ 1437)/2,
+        1500: (2001+ 2003)/2,
+    }
 
 
     def cipher_throughput_mpps(cipher, size_b):
@@ -387,17 +404,25 @@ def main():
     half_w = 0.42                       # half the categorical bar-group width
     seg = 2 * half_w / len(CIPHERS)     # one sub-slot per cipher within a group
     max_bar = ax.get_ylim()[1]           # autoscaled top driven by the measured bars
-    ax.set_ylim(top=max_bar * 2.5)      # scale to the tallest bar, not the cipher ceiling
+    ax.set_ylim(top=max_bar * 1.1)      # scale to the tallest bar, not the cipher ceiling
     for i, size_label in enumerate(size_order):
         size_b = int(size_label)
-        for j, cipher in enumerate(CIPHERS):
-            y_true = cipher_throughput_mpps(cipher, size_b)
+        if size_b in IPSEC_MAP.keys():
+            y_true = nspp2mpps(IPSEC_MAP[size_b])
             ax.hlines(y_true, i - half_w, i + half_w,
-                      color="black", lw=0.5, zorder=5)
-            ax.annotate(CIPHERS_MAP[cipher], xy=(i, y_true), xytext=(1, 1.5),
+                        color="black", lw=0.5, zorder=5)
+            ax.annotate("IPSec", xy=(i, y_true), xytext=(1, 1.5),
                         textcoords="offset points", ha="center", va="bottom",
                         # rotation=90,
                         fontsize=6, color="black", zorder=6)
+        # for j, cipher in enumerate(CIPHERS):
+        #     y_true = cipher_throughput_mpps(cipher, size_b)
+        #     ax.hlines(y_true, i - half_w, i + half_w,
+        #               color="black", lw=0.5, zorder=5)
+        #     ax.annotate(CIPHERS_MAP[cipher], xy=(i, y_true), xytext=(1, 1.5),
+        #                 textcoords="offset points", ha="center", va="bottom",
+        #                 # rotation=90,
+        #                 fontsize=6, color="black", zorder=6)
 
     # for container in ax.containers:
     #     ax.bar_label(container, fmt='%.0f')
