@@ -241,10 +241,11 @@ def main():
     df['vnf'] = df['vnf'].apply(lambda row: hue_map.get(str(row), row))
 
     # map colors and hatches to hues (keyed by hue_order for consistency)
-    colors = sns.color_palette("pastel", len(hue_order)-1) + [ mcolors.to_rgb('sandybrown') ]
+    # colors = sns.color_palette("pastel", len(hue_order)-1) + [ mcolors.to_rgb('sandybrown') ] # do the last system in sandybrown
+    colors = sns.color_palette("pastel", len(hue_order))
     hatch_map = {vnf: hatches[i % len(hatches)] for i, vnf in enumerate(hue_order)}
     color_map = {vnf: colors[i % len(colors)] for i, vnf in enumerate(hue_order)}
-    # palette = dict(zip(df['hue'].unique(), colors))
+    palette = dict(zip(df['vnf'].unique(), colors))
 
     # Only removes outliers that are excessive (e.g. 1000ms from a median of 15ms).
     # We need this because our linux measurements sometimes break and don't detect when click is up.
@@ -269,8 +270,8 @@ def main():
                order=size_order,
                hue="vnf",
                hue_order=hue_order,
-               # palette=palette,
-               palette="deep",
+               palette=palette,
+               # palette="deep",
                saturation=1,
                edgecolor="dimgray",
                )

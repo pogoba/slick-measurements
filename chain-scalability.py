@@ -312,6 +312,20 @@ def main():
     systems = df['system'].unique()
 
 
+    # map colors and hatches to hues (keyed by hue_order for consistency)
+    # colors = sns.color_palette("pastel", len(hue_order)-1) + [ mcolors.to_rgb('sandybrown') ] # do the last system in sandybrown
+    hue_order = systems
+    colors = sns.color_palette("deep", len(hue_order))
+    if len(systems) > 5: # swap colors so that slick gets purple
+        tmp = colors[4]
+        colors[4] = colors[5]
+        colors[5] = tmp
+        # tmp = hatches[4]
+        # hatches[4] = hatches[5]
+        # hatches[5] = tmp
+    # hatch_map = {vnf: hatches[i % len(hatches)] for i, vnf in enumerate(hue_order)}
+    color_map = {vnf: colors[i % len(colors)] for i, vnf in enumerate(hue_order)}
+    palette = dict(zip(df['system'].unique(), colors))
 
     # Create FacetGrid for side-by-side plots
     grid = sns.FacetGrid(df, col='plot_type', height=args.height, aspect=args.width/(2*args.height),
@@ -330,6 +344,8 @@ def main():
                       hue_order=systems,
                       style="system",
                       style_order=systems,
+                      # palette="deep",
+                      palette=palette,
                       markers=True,
                       errorbar='ci')
 
