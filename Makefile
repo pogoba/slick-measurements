@@ -1,6 +1,6 @@
 .PHONY: repl
 
-NAME := out31-output6v3
+NAME := out33-output6v4
 OUT_DIR := ./pdfs/$(NAME)
 DATA := ./data/$(NAME)
 ROOT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -35,6 +35,7 @@ app-throughput.pdf:
     --2-name "Kata" --2 $(DATA)/vm_kata_real_b32_0ns_0b_c3_*b_rep*.log \
     --3-name "Strawman" --3 $(DATA)/multivm_mirror_real_b32_0ns_0b_c0_v3_*b_rep*.log \
     --4-name "Slick" --4 $(DATA)/vm_iomgr_real_b32_0ns_0b_c3_*b_rep*.log \
+    --5-name "CoCo" --5 $(DATA)/vm_coco_real_b32_0ns_0b_c3_*b_rep*.log \
 
     # --1-name "Un-isolated" --1 $(DATA)/vm_insecure_real_b32_0ns_0b_c3_*b_rep*.log \
     # --3-name "Naive" --3 $(DATA)/vm_noiomgr_real_b32_0ns_0b_c3_*b_rep*.log \
@@ -50,12 +51,14 @@ chain-scalability.pdf:
     --3-name "Strawman" --3 $(DATA)/multivm_mirror_synthetic_b32_0ns_0b_c0_v*_1500b_rep*.log \
     --4-name "Naive" --4 $(DATA)/vm_noiomgr_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
     --5-name "Slick" --5 $(DATA)/vm_iomgr_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
+    --6-name "CoCo" --6 $(DATA)/vm_coco_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
     \
     --lat-1-name "Containers" --lat-1 $(DATA)/vm_lat_containers_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
     --lat-2-name "Kata" --lat-2 $(DATA)/vm_lat_kata_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
     --lat-3-name "Strawman" --lat-3 $(DATA)/multivm_lat_mirror_synthetic_b32_0ns_0b_c0_v*_1500b_rep*.log \
     --lat-4-name "Naive" --lat-4 $(DATA)/vm_lat_noiomgr_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
     --lat-5-name "Slick" --lat-5 $(DATA)/vm_lat_iomgr_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
+    --lat-6-name "CoCo" --lat-6 $(DATA)/vm_lat_coco_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
 
     # --3-name "Un-isolated" --3 $(DATA)/vm_insecure_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
     # --lat-3-name "Un-isolated" --lat-3 $(DATA)/vm_lat_insecure_synthetic_b32_0ns_0b_c*_1500b_rep*.log \
@@ -68,10 +71,12 @@ microbenchmarks.pdf:
     --2-name "Kata" --2 $(DATA)/vm_kata_synthetic_b32_*ns_*b_c2_*b_rep*.log \
     --3-name "Strawman" --3 $(DATA)/multivm_mirror_synthetic_b32_*ns_*b_c0_v2_*b_rep*.log \
     --4-name "Slick" --4 $(DATA)/vm_iomgr_synthetic_b32_*ns_*b_c2_*b_rep*.log \
+    --5-name "CoCo" --5 $(DATA)/vm_coco_synthetic_b32_*ns_*b_c2_*b_rep*.log \
     \
     --lat-2-name "Kata" --lat-2 $(DATA)/vm_lat_kata_synthetic_b32_*ns_*b_c2_*b_rep*.log \
     --lat-3-name "Strawman" --lat-3 $(DATA)/multivm_lat_mirror_synthetic_b32_*ns_*b_c0_v2_*b_rep*.log \
     --lat-4-name "Slick" --lat-4 $(DATA)/vm_lat_iomgr_synthetic_b32_*ns_*b_c2_*b_rep*.log \
+    --lat-5-name "CoCo" --lat-5 $(DATA)/vm_lat_coco_synthetic_b32_*ns_*b_c2_*b_rep*.log \
 
     # --lat-1-name "Containers" --lat-1 $(DATA)/vm_lat_containers_synthetic_b32_*ns_*b_c2_*b_rep*.log \
 
@@ -94,6 +99,7 @@ externalio.pdf:
     --3-name "DPDK (VM)" --3 $(DATA)/vm_mirrorUnconfidential_*_b32_0ns_0b_c1_*b_rep*.log \
     --4-name "Linux (CVM)" --4 $(DATA)/vm_mirrorKni_*_b32_0ns_0b_c1_*b_rep*.log \
     --5-name "Slick (CVM)" --5 $(DATA)/vm_mirror_*_b32_0ns_0b_c1_*b_rep*.log \
+    --6-name "CoCo (VM)" --6 $(DATA)/vm_coco_*_b32_0ns_0b_c1_*b_rep*.log \
 
     # --2-name "DPDK (CVM)" --2 $(DATA)/vm_mirror_synthetic_b32_0ns_0b_c1_*b_rep*.log \
 
