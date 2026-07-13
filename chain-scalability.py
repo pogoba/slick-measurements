@@ -5,6 +5,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import seaborn as sns
+from seaborn._base import unique_dashes, unique_markers
 import argparse
 from re import search
 from os.path import basename, getsize
@@ -316,10 +317,17 @@ def main():
     # colors = sns.color_palette("pastel", len(hue_order)-1) + [ mcolors.to_rgb('sandybrown') ] # do the last system in sandybrown
     hue_order = systems
     colors = sns.color_palette("deep", len(hue_order))
+    # seaborn's default line + marker style lists, so every system keeps its
+    # current appearance except the ones we explicitly swap below
+    markers = unique_markers(len(hue_order))
+    dashes = unique_dashes(len(hue_order))
     if len(systems) > 5: # swap colors so that slick gets purple
         tmp = colors[4]
         colors[4] = colors[5]
         colors[5] = tmp
+        # also swap line + marker style of the 5th and 6th system
+        markers[4], markers[5] = markers[5], markers[4]
+        dashes[4], dashes[5] = dashes[5], dashes[4]
         # tmp = hatches[4]
         # hatches[4] = hatches[5]
         # hatches[5] = tmp
@@ -346,7 +354,8 @@ def main():
                       style_order=systems,
                       # palette="deep",
                       palette=palette,
-                      markers=True,
+                      markers=markers,
+                      dashes=dashes,
                       errorbar='ci')
 
     if not args.logarithmic:
